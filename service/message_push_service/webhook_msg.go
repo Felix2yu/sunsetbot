@@ -1,10 +1,11 @@
 package message_push_service
 
 import (
-	"net/http"
-	"net/url"
 	"fmt"
-	"flame_clouds/global"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,23 +16,43 @@ type WebhookMsg struct {
 
 // Push 实现消息推送接口
 func (w WebhookMsg) Push(title string, des string) error {
-	// 构建请求参数
-	params := url.Values{}
-	params.Add("message", title+": "+des)
-	params.Add("priority", "high")
-	params.Add("tags", "warning,skull")
+	// 构建请求体
+	bodyContent := fmt.Sprintf("%s: %s", title, des)
+	logrus.Infof("webhook推送请求体: %s", bodyContent)
 
-	// 发送GET请求
-	resp, err := http.Get(w.URL + "?" + params.Encode())
+	// 创建POST请求
+	req, err := http.NewRequest("POST", w.URL, strings.NewReader(bodyContent))
 	if err != nil {
-		logrus.Errorf("webhook推送失败: %v", err)
+		logrus.Errorf("创建webhook请求失败: %v", err)
+		return err
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Markdown", "yes")
+	req.Header.Set("Priority", "high")
+	req.Header.Set("Tags", "warning,skull")
+
+	// 发送请求
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logrus.Errorf("webhook推送请求失败: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
+	// 读取响应内容
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Errorf("webhook响应读取失败: %v", err)
+		return err
+	}
+	responseBody := string(body)
+
+	logrus.Infof("webhook推送响应: 状态码=%d, 内容=%s", resp.StatusCode, responseBody)
+
 	if resp.StatusCode != http.StatusOK {
-		logrus.Errorf("webhook推送失败, 状态码: %d", resp.StatusCode)
-		return fmt.Errorf("webhook推送失败, 状态码: %d", resp.StatusCode)
+		return fmt.Errorf("webhook推送失败, 状态码: %d, 响应内容: %s", resp.StatusCode, responseBody)
 	}
 
 	logrus.Infof("webhook推送成功")
