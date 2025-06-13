@@ -27,7 +27,8 @@ type MonitorEvent struct {
 }
 
 type Bot struct {
-	Enable  bool                `yaml:"enable"`
-	Target  types.BotTargetType `yaml:"target"`
-	SendKey string              `yaml:"sendKey"`
+	Enable    bool                `yaml:"enable"`
+	Target    types.BotTargetType `yaml:"target"`
+	SendKey   string              `yaml:"sendKey"`
+	WebhookURL string             `yaml:"webhookURL"`
 }

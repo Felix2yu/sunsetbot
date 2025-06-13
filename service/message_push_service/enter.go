@@ -17,6 +17,10 @@ func NewMessage(t types.BotTargetType) MessagePushInterface {
 		return FtMsg{
 			Key: global.Config.Bot.SendKey,
 		}
+	case types.WebhookBot: // Webhook
+		return WebhookMsg{
+			URL: global.Config.Bot.WebhookURL,
+		}
 	default:
 		logrus.Errorf("消息推送配置错误")
 		return nil

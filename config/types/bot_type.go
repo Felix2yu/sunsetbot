@@ -2,4 +2,7 @@ package types
 
 type BotTargetType string
 
-const FtBot BotTargetType = "ft"
+const (
+	FtBot BotTargetType = "ft"
+	WebhookBot BotTargetType = "webhook"
+)
