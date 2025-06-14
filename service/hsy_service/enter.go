@@ -6,7 +6,6 @@ import (
 	"flame_clouds/global"
 	"flame_clouds/service/message_push_service"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type SunsetBotReq struct {
@@ -111,11 +112,12 @@ func checkAndNotify(data *SunsetBotResponse, e config.MonitorEvent) {
 
 	// 构建消息内容
 	message := fmt.Sprintf(
-		"【火烧云预警】城市: %s  事件: %s  时间: %s  火烧云质量: %.2f 满足拍摄条件!",
+		"【火烧云预警】城市: %s\n事件: %s\n时间: %s\n火烧云质量: %.2f\n气溶胶指标: %s\n满足拍摄条件!",
 		global.Config.Monitor.City,
 		e.EventType.String(),
 		data.TbEventTime,
 		quality,
+		data.TbAod,
 	)
 	message = strings.ReplaceAll(message, "<br>", "")
 	logrus.Infof(message)

@@ -17,11 +17,12 @@ type WebhookMsg struct {
 // Push 实现消息推送接口
 func (w WebhookMsg) Push(title string, des string) error {
 	// 构建请求体
-	bodyContent := fmt.Sprintf("%s: %s", title, des)
+	bodyContent := fmt.Sprintf("%s", des)
 	logrus.Infof("webhook推送请求体: %s", bodyContent)
 
 	// 创建POST请求
 	req, err := http.NewRequest("POST", w.URL, strings.NewReader(bodyContent))
+	req.Header.Set("Title", title)
 	if err != nil {
 		logrus.Errorf("创建webhook请求失败: %v", err)
 		return err
@@ -31,7 +32,6 @@ func (w WebhookMsg) Push(title string, des string) error {
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("Markdown", "yes")
 	req.Header.Set("Priority", "high")
-	req.Header.Set("Tags", "warning,skull")
 
 	// 发送请求
 	resp, err := http.DefaultClient.Do(req)
