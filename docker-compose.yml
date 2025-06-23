@@ -1,0 +1,11 @@
+services:
+  sunsetbot:
+    image: ghcr.io/felix2yu/sunsetbot:latest
+    build:
+      context: .
+    container_name: sunsetbot
+    restart: unless-stopped
+    volumes:
+      - ./settings.yaml:/app/settings.yaml
+    environment:
+      - TZ=Asia/Shanghai

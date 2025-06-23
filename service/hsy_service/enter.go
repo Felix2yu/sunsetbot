@@ -111,13 +111,15 @@ func checkAndNotify(data *SunsetBotResponse, e config.MonitorEvent) {
 
 	// 构建消息内容
 	message := fmt.Sprintf(
-		"【火烧云预警】城市: %s  事件: %s  时间: %s  火烧云质量: %.2f 满足拍摄条件!",
-		global.Config.Monitor.City,
-		e.EventType.String(),
-		data.TbEventTime,
-		quality,
+	"城市: %s\n事件: %s\n时间: %s\n火烧云质量: %.2f\n气溶胶指标: %s",
+
+	global.Config.Monitor.City,
+	e.EventType.String(),
+	data.TbEventTime,
+	quality,
+	data.TbAod,
 	)
-	message = strings.ReplaceAll(message, "<br>", "")
+	message = strings.ReplaceAll(message, "<br>", " ")	
 	logrus.Infof(message)
 
 	if !global.Config.Bot.Enable {
@@ -138,7 +140,7 @@ func checkAndNotify(data *SunsetBotResponse, e config.MonitorEvent) {
 		}
 	}
 
-	title := fmt.Sprintf("[%s] %s预警 质量:%.2f", global.Config.Monitor.City, e.EventType.String(), quality)
+	title := fmt.Sprintf("%s %s预警 质量:%.2f", global.Config.Monitor.City, e.EventType.String(), quality)
 
 	// 消息推送
 	bot := message_push_service.NewMessage(global.Config.Bot.Target)

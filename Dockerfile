@@ -21,10 +21,11 @@ RUN apk add tzdata
 # 设置工作目录
 WORKDIR /app
 
-# 复制配置文件和证书
-COPY settings.yaml /app
 # 从构建器镜像中复制可执行文件
 COPY --from=builder /app/main /app
+
+# 复制配置文件和证书
+COPY settings.yaml /app
 
 # 启动应用程序
 CMD ["./main"]

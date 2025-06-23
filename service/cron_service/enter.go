@@ -2,7 +2,6 @@ package cron_service
 
 import (
 	"flame_clouds/config"
-	"flame_clouds/config/types"
 	"flame_clouds/global"
 	"flame_clouds/service/hsy_service"
 	"github.com/robfig/cron/v3"
@@ -29,9 +28,6 @@ func CronService() {
 	logrus.Infof("监控城市 %s", global.Config.Monitor.City)
 
 	Crontab = cron.New(cron.WithSeconds(), cron.WithLocation(timezone))
-
-	global.Config.Monitor.Evening.EventType = types.Evening
-	global.Config.Monitor.Morning.EventType = types.Morning
 
 	// 晚霞
 	CronDate(global.Config.Monitor.Evening)

@@ -2,6 +2,7 @@ package core
 
 import (
 	"flame_clouds/config"
+	"flame_clouds/config/types"
 	"flame_clouds/flags"
 	"flame_clouds/global"
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,8 @@ func ReadConfig() *config.Config {
 	if err != nil {
 		logrus.Fatalf("配置文件格式错误 %s", err)
 	}
+	server.Monitor.Evening.EventType = types.Evening
+	server.Monitor.Morning.EventType = types.Morning
 	logrus.Infof("%s 配置文件加载成功", flags.Options.File)
 	return &server
 }
@@ -39,3 +42,4 @@ func DumpConfig() {
 	logrus.Infof("配置文件写入成功")
 
 }
+
