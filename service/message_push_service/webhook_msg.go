@@ -31,7 +31,6 @@ func (w WebhookMsg) Push(title string, des string) error {
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("Markdown", "yes")
 	req.Header.Set("Priority", "high")
-	//req.Header.Set("Tags", "warning,skull")
 
 	// 发送请求
 	resp, err := http.DefaultClient.Do(req)
@@ -40,7 +39,6 @@ func (w WebhookMsg) Push(title string, des string) error {
 		return err
 	}
 	defer resp.Body.Close()
-
 
 	// 读取响应内容
 	body, err := io.ReadAll(resp.Body)

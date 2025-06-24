@@ -6,7 +6,6 @@ import (
 	"flame_clouds/global"
 	"flame_clouds/service/message_push_service"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type SunsetBotReq struct {
