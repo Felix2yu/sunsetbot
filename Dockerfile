@@ -1,6 +1,5 @@
 # 使用官方 Python 基础镜像
-# FROM python:3.13-slim
-FROM m.daocloud.io/docker.io/library/python:3.10-slim
+FROM python:3-slim
 
 # 将构建环境下的文件OR目录, 复制到镜像中的/code目录下, 
 # ADD . /code
@@ -8,13 +7,9 @@ FROM m.daocloud.io/docker.io/library/python:3.10-slim
 # 设置工作目录
 WORKDIR /app
 
-
 # 复制依赖文件并安装
 COPY requirements.txt .
 RUN pip install -r requirements.txt
- 
-# 安装依赖（官方源速度较慢，使用阿里源）
-# RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
  
 # 复制项目代码
 COPY config.yaml /app/

@@ -1,41 +1,42 @@
 ## 这是一个python写的朝霞晚霞预警脚本程序
-用户可根据config.yaml文件配置每天查询火烧云的时间和预期质量，最后通过service酱推送到微信
+用户可根据config.yaml文件配置每天查询火烧云的时间和预期质量，最后通过ntfy推送信息
+
 由sunsetbot.top提供接口
 
-
 ## 消息推送
-使用server酱推送到微信
+使用ntfy推送信息
 
-注册server酱账号： https://sct.ftqq.com/
+官方ntfy地址：https://ntfy.sh/
 
-注册成功之后获取 sendKey，填入配置文件
-
-免费账号有五次推送机会，对我们来说足够了
-
+也可自建部署本地服务。
 
 ## 配置
 ```yaml
-# Server酱微信推送
+request:
+  base_url: "https://sunsetbot.top/"  #不用动
+
+# 信息推送
 push:
   enable: true
-  sckey: "" #"你的Server酱SCKEY"
+  ntfy_server: "https://ntfy.sh"      # 可自定义自建服务器地址
+  ntfy_topic: "Weather"               # 替换为实际主题
 
 schedule:
-  city: "广东省-广州"
-  send_wechat_test_on_start: false # 是否在启动的时候推送测试通知
-  push_error: false # 请求错误是否推送到微信
+  city: "江苏省-苏州"
+  send_test_on_start: false           # 是否在启动的时候推送测试通知
+  push_error: false                   # 请求错误是否推送
   # 朝霞
   morning:  
     enable: true
-    quality: 0.5 # 质量
-    time: ["18:00","23:00"] # 多个时间用英文逗号隔开
-    model: ["GFS","EC"] #"GFS","EC"  多个模式用英文逗号隔开
+    quality: 0.3                      # 质量
+    time: ["18:00","23:00"]           # 多个时间用英文逗号隔开
+    model: ["GFS","EC"]               #"GFS","EC"  多个模式用英文逗号隔开
   
   # 晚霞
   evening: 
     enable: true
-    quality: 0.5
-    time: ["11:00", "16:00"]
+    quality: 0.2
+    time: ["08:00", "11:00", "16:00"]
     model: ["GFS","EC"] 
 ```
 
@@ -43,7 +44,7 @@ schedule:
 
 ### Docker命令
 打包镜像：
-docker build -f .\Dockerfile.txt -t sunsetbot .
+docker build . -t sunsetbot
 
 查看镜像：
 docker image ls
