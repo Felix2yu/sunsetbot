@@ -2,7 +2,7 @@ import json
 import requests
 import schedule
 import time
-import datetime
+from datetime import datetime, date, timedelta
 import urllib.parse
 import yaml
 import os
@@ -181,12 +181,12 @@ class WeatherPredictor:
             return ''
         
         try:
-            event_date = datetime.datetime.strptime(event_time[:10], '%Y-%m-%d').date()
-            today = datetime.date.today()
+            event_date = datetime.strptime(event_time[:10], '%Y-%m-%d').date()
+            today = date.today()
             
             if event_date == today:
                 return '(今天)'
-            elif event_date == today + datetime.timedelta(days=1):
+            elif event_date == today + timedelta(days=1):
                 return '(明天)'
             else:
                 return f'({event_date.strftime("%m-%d")})'  # 显示具体日期
@@ -234,6 +234,8 @@ class WeatherPredictor:
         Args:
             is_morning: 是否为早晨数据
         """
+        logger.info(f"[任务执行] {'朝霞' if is_morning else '晚霞'}任务开始执行，当前时间: {datetime.now()}")
+        
         # 确定模型配置
         section = "morning" if is_morning else "evening"
         models = self.config["schedule"][section]["model"]
@@ -246,19 +248,23 @@ class WeatherPredictor:
         event_prefix = "MORNING" if is_morning else "EVENING"
         
         for model in models:
-            # 早晨特殊处理：如果当前时间小于6点，同时获取今天和明天的朝霞
-            if is_morning and datetime.datetime.now().hour < 6:
-                url1 = self.build_url(EVENT_MAP[f"TODAY_{event_prefix}"], model)
-                urls[url1] = model
-            
-            # 获取明天的朝霞/晚霞
+            # 获取明天的朝霞/晚霞（总是获取）
             url_tomorrow = self.build_url(EVENT_MAP[f"TOMORROW_{event_prefix}"], model)
             urls[url_tomorrow] = model
             
-            # 晚霞总是获取今天的和明天的
-            if not is_morning:
-                url_today = self.build_url(EVENT_MAP[f"TODAY_{event_prefix}"], model)
-                urls[url_today] = model
+            # 获取今天的朝霞/晚霞（根据时间判断）
+            if is_morning:
+                # 朝霞：如果当前时间小于中午12点，同时获取今天的朝霞
+                if datetime.now().hour < 12:
+                    url_today = self.build_url(EVENT_MAP[f"TODAY_{event_prefix}"], model)
+                    urls[url_today] = model
+            else:
+                # 晚霞：如果当前时间小于19点，同时获取今天的和明天的；19点后只获取明天的
+                if datetime.now().hour < 19:
+                    url_today = self.build_url(EVENT_MAP[f"TODAY_{event_prefix}"], model)
+                    urls[url_today] = model
+        
+        logger.info(f"[URL构建] 构建了 {len(urls)} 个请求URL: {list(urls.keys())}")
         
         city = self.config["schedule"]["city"]
         # 提取连字符后面的城市名
@@ -382,7 +388,7 @@ class WeatherPredictor:
 
 def main():
     """主函数"""
-    logger.info(f"[启动] {datetime.datetime.now()}")
+    logger.info(f"[启动] {datetime.now()}")
     
     try:
         predictor = WeatherPredictor()
