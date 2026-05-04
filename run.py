@@ -89,16 +89,37 @@ class WeatherPredictor:
         """生成随机数字字符串"""
         return str(random.randint(100000, 999999))
     
-    def _parse_weather_data(self, content: str, target_quality: float) -> Optional[str]:
+    @staticmethod
+    def _calculate_priority(quality_num: float) -> int:
+        """
+        根据质量数值计算 ntfy 优先级
+        
+        Args:
+            quality_num: 质量数值
+            
+        Returns:
+            ntfy 优先级 (1-5)
+        """
+        if quality_num < 0.2:
+            return 1
+        elif quality_num < 0.4:
+            return 2
+        elif quality_num < 0.8:
+            return 3
+        elif quality_num < 1.0:
+            return 4
+        else:
+            return 5
+    
+    def _parse_weather_data(self, content: str) -> Optional[Tuple[str, float, str, str]]:
         """
         解析天气数据
         
         Args:
             content: 响应内容
-            target_quality: 目标质量阈值
             
         Returns:
-            解析后的天气信息字符串，如果不符合条件则返回None
+            (解析后的天气信息字符串, 质量数值, 日期字符串, 时间字符串) 元组，如果解析失败则返回 None
         """
         try:
             json_content = json.loads(content)
@@ -113,21 +134,31 @@ class WeatherPredictor:
                 
             quality_num = float(quality_match.group())
             
-            if quality_num < target_quality:
-                logger.debug(f"质量数值 {quality_num} 低于阈值 {target_quality}")
-                return None
+            # 提取气溶胶数值
+            aod_str = json_content.get('tb_aod', 'N/A')
+            aod_match = re.search(r'\d+\.\d+', str(aod_str))
+            aod_num = float(aod_match.group()) if aod_match else None
             
-            # 构建推送字符串
-            push_str = f"鲜艳度：{quality_str}\n"
-            push_str += f"气溶胶：{json_content.get('tb_aod', 'N/A')}\n"
-            
+            # 提取日期和时间
             event_time = json_content.get('tb_event_time', '')
-            if event_time:
-                day_indicator = self._get_day_indicator(event_time)
-                push_str += f"时间{day_indicator}：{event_time}\n"
+            date_str = event_time[:10] if event_time else ''
+            time_str = event_time[11:] if event_time else ''
             
-            logger.debug(f"解析成功: {push_str}")
-            return push_str
+            # 构建推送字符串，根据条件加粗
+            # 处理鲜艳度：>= 0.4 加粗
+            if quality_num >= 0.4:
+                push_str = f"鲜艳度：**{quality_str}**\n"
+            else:
+                push_str = f"鲜艳度：{quality_str}\n"
+            
+            # 处理气溶胶：<= 0.4 则加粗
+            if aod_num is not None and aod_num <= 0.4:
+                push_str += f"气溶胶：**{aod_str}**\n"
+            else:
+                push_str += f"气溶胶：{aod_str}\n"
+            
+            logger.debug(f"解析成功: {push_str}, 质量: {quality_num}, 日期: {date_str}, 时间: {time_str}")
+            return push_str, quality_num, date_str, time_str
             
         except json.JSONDecodeError as e:
             logger.error(f"JSON解析失败: {e}, 内容: {content[:100]}...")
@@ -163,16 +194,15 @@ class WeatherPredictor:
             logger.warning(f"时间格式错误: {event_time}")
             return ''
     
-    def fetch_single_data(self, url: str, target_quality: float) -> Optional[str]:
+    def fetch_single_data(self, url: str) -> Optional[Tuple[str, float, str, str]]:
         """
         获取单个URL的数据
         
         Args:
             url: 请求URL
-            target_quality: 目标质量阈值
             
         Returns:
-            符合条件的天气数据字符串
+            (天气数据字符串, 质量数值, 日期字符串, 时间字符串) 元组
         """
         try:
             response = self.session.get(url, timeout=(10, 30))
@@ -180,18 +210,21 @@ class WeatherPredictor:
             content = response.text
             
             logger.info(f"请求成功: {url}")
-            return self._parse_weather_data(content, target_quality)
+            return self._parse_weather_data(content)
             
-        except requests.exceptions.Timeout:
+        except requests.exceptions.Timeout as e:
             logger.error(f"请求超时: {url}")
+            error_msg = str(e)
         except requests.exceptions.RequestException as e:
             logger.error(f"请求失败: {url}, 错误: {e}")
+            error_msg = str(e)
         except Exception as e:
             logger.error(f"获取数据时发生未知错误: {e}")
+            error_msg = str(e)
         
         # 根据配置决定是否返回错误信息
         if self.config["schedule"]["push_error"]:
-            return f"[失败] 请求错误: {str(e)[:100]}\n"
+            return f"[失败] 请求错误: {error_msg[:100]}\n", 0.0, "", ""
         return None
     
     def fetch_data(self, is_morning: bool) -> None:
@@ -227,60 +260,94 @@ class WeatherPredictor:
                 url_today = self.build_url(EVENT_MAP[f"TODAY_{event_prefix}"], model)
                 urls[url_today] = model
         
-        target_quality = self.config["schedule"][section]["quality"]
-        event_title = "🌅 朝霞预报" if is_morning else "🌆 晚霞预报"
+        city = self.config["schedule"]["city"]
+        # 提取连字符后面的城市名
+        if "-" in city:
+            city = city.split("-")[-1]
+        event_title = f"{city}朝霞预报" if is_morning else f"{city}晚霞预报"
+        event_tag = "sunrise" if is_morning else "city_sunset"
         
         # 并发获取数据（简化版本，可根据需要改为真正的并发）
-        markdown_lines = self._build_markdown_response(urls, target_quality, event_title)
+        markdown_lines, max_priority, has_data = self._build_markdown_response(urls, event_title)
         
-        if len(markdown_lines) > 2:  # 有实际数据
+        if has_data:  # 有实际数据
             push_content = "\n".join(markdown_lines)
-            self.send_ntfy_notification(event_title, push_content)
+            if max_priority is None:
+                max_priority = 3
+            self.send_ntfy_notification(event_title, push_content, max_priority, [event_tag])
         else:
             logger.info("[推送] 没有符合条件的数据")
     
     def _build_markdown_response(self, urls: Dict[str, str], 
-                                target_quality: float, 
-                                event_title: str) -> List[str]:
+                                event_title: str) -> Tuple[List[str], Optional[int], bool]:
         """
         构建Markdown响应
         
         Args:
             urls: URL到模型的映射
-            target_quality: 目标质量阈值
             event_title: 事件标题
             
         Returns:
-            Markdown行列表
+            (Markdown行列表, 最高优先级, 是否有数据) 元组
         """
         markdown_lines = []
         city = self.config["schedule"]["city"]
+        max_priority = None
         
-        markdown_lines.extend([
-            f"**城市：** {city}",
-            f"**鲜艳度阈值：** {target_quality}",
-            ""
-        ])
+        # 按日期分组存储数据: date_str -> [(model, push_str, quality_num, time_str), ...]
+        data_by_date = {}
         
-        # 并行处理（这里简化为顺序处理，可根据需要改为并发）
+        # 收集所有数据
         for url, model in urls.items():
-            result = self.fetch_single_data(url, target_quality)
+            result = self.fetch_single_data(url)
             if result:
-                markdown_lines.append(f"**模型：{model}**")
-                for line in result.strip().split('\n'):
-                    if line.strip():  # 跳过空行
-                        markdown_lines.append(f"- {line}")
-                markdown_lines.append("")  # 分隔
+                push_str, quality_num, date_str, time_str = result
+                priority = self._calculate_priority(quality_num)
+                
+                # 更新最高优先级
+                if max_priority is None or priority > max_priority:
+                    max_priority = priority
+                
+                if date_str not in data_by_date:
+                    data_by_date[date_str] = []
+                data_by_date[date_str].append((model, push_str, quality_num, time_str))
         
-        return markdown_lines
+        # 构建输出
+        has_data = len(data_by_date) > 0
+        
+        # 按日期排序并输出
+        for date_idx, date_str in enumerate(sorted(data_by_date.keys())):
+            if date_idx > 0:
+                markdown_lines.append("")
+            markdown_lines.append(f"## 日期：{date_str}")
+            
+            # 添加第一个模型的时间在日期下面
+            first_model_data = data_by_date[date_str][0]
+            first_time = first_model_data[3]
+            if first_time:
+                markdown_lines.append(f"时间：{first_time}")
+            
+            markdown_lines.append("")
+            
+            # 输出每个模型的数据
+            for model, push_str, _, time_str in data_by_date[date_str]:
+                markdown_lines.append(f"### {model}模型")
+                for line in push_str.strip().split('\n'):
+                    if line.strip():
+                        markdown_lines.append(f"- {line}")
+                markdown_lines.append("")
+        
+        return markdown_lines, max_priority, has_data
     
-    def send_ntfy_notification(self, title: str, content: str) -> None:
+    def send_ntfy_notification(self, title: str, content: str, priority: int = 3, tags: List[str] = None) -> None:
         """
         发送ntfy通知
         
         Args:
             title: 通知标题
             content: 通知内容
+            priority: ntfy 优先级 (1-5)，默认为 3
+            tags: ntfy 标签列表，可选
         """
         push_enable = self.config["push"]["enable"]
         if not push_enable:
@@ -296,17 +363,19 @@ class WeatherPredictor:
         
         url = f"{ntfy_server}/{ntfy_topic}"
         
-        headers = {"Markdown": "yes"}
+        headers = {"Markdown": "yes", "Priority": str(priority)}
+        if tags:
+            headers["Tags"] = ",".join(tags)
         token = self.config["push"].get("ntfy_token")
         if token:
             headers["Authorization"] = f"Bearer {token}"
         
-        message = f"# {title}\n\n{content}"
+        message = f"{title}\n\n{content}"
         
         try:
             response = self.session.post(url, data=message.encode('utf-8'), headers=headers)
             response.raise_for_status()
-            logger.info(f"[推送成功] ntfy 通知已发送到 {url}")
+            logger.info(f"[推送成功] ntfy 通知已发送到 {url}, 优先级: {priority}")
         except Exception as e:
             logger.error(f"[推送失败] {e}")
 
