@@ -100,9 +100,9 @@ class WeatherPredictor:
         Returns:
             ntfy 优先级 (1-5)
         """
-        if quality_num < 0.2:
+        if quality_num < 0.4:
             return 1
-        elif quality_num < 0.4:
+        elif quality_num < 0.6:
             return 2
         elif quality_num < 0.8:
             return 3
@@ -308,6 +308,12 @@ class WeatherPredictor:
             result = self.fetch_single_data(url)
             if result:
                 push_str, quality_num, date_str, time_str = result
+                
+                # 过滤掉质量0.2以下的数据
+                if quality_num < 0.2:
+                    logger.info(f"[过滤] 质量 {quality_num} 低于0.2，跳过通知")
+                    continue
+                
                 priority = self._calculate_priority(quality_num)
                 
                 # 更新最高优先级
