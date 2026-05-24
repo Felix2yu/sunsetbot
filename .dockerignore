@@ -1,0 +1,7 @@
+.img
+.git
+.github
+README.md
+*.md
+.gitignore
+.dockerignore

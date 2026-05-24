@@ -1,7 +1,7 @@
 services:
   sunsetbot:
     container_name: sunsetbot
-    image: sunsetbot:latest
+    image: ghcr.io/felix2yu/sunsetbot:latest
     environment:
       - PYTHONUNBUFFERED=1
     volumes:

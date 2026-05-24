@@ -311,7 +311,7 @@ class WeatherPredictor:
                 
                 # 过滤掉质量0.2以下的数据
                 if quality_num < 0.2:
-                    logger.info(f"[过滤] 质量 {quality_num} 低于0.2，跳过通知")
+                    logger.info(f"[过滤] 质量 {quality_num} 低于 0.2，跳过通知")
                     continue
                 
                 priority = self._calculate_priority(quality_num)
