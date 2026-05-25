@@ -1,25 +1,24 @@
 request:
-  base_url: "https://sunsetbot.top/"  #不用动
+  base_url: "https://sunsetbot.top/"      # 不用动
 
 # 信息推送
 push:
   enable: true
-  ntfy_server: "https://ntfy.sh"      # 可自定义自建服务器地址
-  ntfy_topic: "Weather"               # 替换为实际主题
+  ntfy_server: "https://ntfy.sh"          # 可自定义自建服务器地址
+  ntfy_topic: "Weather"                   # 替换为实际主题
 
 schedule:
   city: "江苏省-苏州"
-  send_test_on_start: false           # 是否在启动的时候推送测试通知
-  push_error: false                   # 请求错误是否推送通知
+  send_test_on_start: false               # 是否在启动的时候推送测试通知
+  push_error: true                        # 请求错误是否推送
   # 朝霞
   morning:  
     enable: true
-    time: ["18:00","23:00"]          # 多个时间用英文逗号隔开
-    model: ["GFS","EC"]               #"GFS","EC"  多个模式用英文逗号隔开
+    time: ["18:00","00:00"]               # 多个时间用英文逗号隔开
+    model: ["GFS","EC"]                   # 当前支持GFS、EC，多个模式之间用英文逗号隔开
   
   # 晚霞
   evening: 
     enable: true
-    time: ["08:00", "11:00", "16:00"]
-    model: ["GFS","EC"] 
- 
+    time: ["08:00", "11:30", "16:00"]
+    model: ["GFS","EC"]
