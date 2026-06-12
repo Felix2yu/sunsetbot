@@ -1,30 +1,42 @@
 # 多阶段构建：第一阶段 - 构建阶段
-FROM python:3.14-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /build
 
-# 复制依赖文件
-COPY requirements.txt .
+# 设置 Go 环境变量
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
 
-# 安装依赖到本地目录
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# 复制依赖文件
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 复制代码并构建
+COPY . .
+
+# 构建二进制文件
+RUN go build -ldflags="-s -w" -o /build/sunsetbot .
 
 # 第二阶段 - 运行阶段
-FROM python:3.14-alpine
+FROM alpine:3.20
 
 WORKDIR /app
 
-# 复制依赖
-COPY --from=builder /install /usr/local
-
-# 复制项目代码
-COPY config.yaml .
-COPY run.py .
-
 # 设置时区
-ENV TIME_ZONE=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime \
-    && echo $TIME_ZONE > /etc/timezone
+ENV TZ=Asia/Shanghai
+RUN apk add --no-cache tzdata ca-certificates \
+    && ln -sf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
+
+# 复制二进制文件
+COPY --from=builder /build/sunsetbot /app/sunsetbot
+COPY config.yaml /app/config.yaml
+
+# 设置执行权限
+RUN chmod +x /app/sunsetbot
 
 # 启动程序
-CMD ["python", "run.py"]
+CMD ["/app/sunsetbot"]
