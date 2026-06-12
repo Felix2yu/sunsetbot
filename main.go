@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -13,13 +12,10 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "", "配置文件路径（默认：当前目录的 config.yaml）")
-	flag.Parse()
-
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 	logger.Printf("[启动] %s", time.Now().Format("2006-01-02 15:04:05"))
 
-	cfg, err := LoadConfig(*configPath)
+	cfg, err := LoadConfig()
 	if err != nil {
 		logger.Fatalf("初始化失败: %v", err)
 	}

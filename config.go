@@ -3,67 +3,113 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-
-	"gopkg.in/yaml.v3"
+	"strconv"
+	"strings"
 )
 
 type RequestConfig struct {
-	BaseURL string `yaml:"base_url"`
+	BaseURL string
 }
 
 type PushConfig struct {
-	Enable     bool   `yaml:"enable"`
-	NtfyServer string `yaml:"ntfy_server"`
-	NtfyTopic  string `yaml:"ntfy_topic"`
-	NtfyToken  string `yaml:"ntfy_token"`
+	Enable     bool
+	NtfyServer string
+	NtfyTopic  string
+	NtfyToken  string
 }
 
 type TaskConfig struct {
-	Enable bool     `yaml:"enable"`
-	Time   []string `yaml:"time"`
-	Model  []string `yaml:"model"`
+	Enable bool
+	Time   []string
+	Model  []string
 }
 
 type ScheduleConfig struct {
-	City             string     `yaml:"city"`
-	SendTestOnStart  bool       `yaml:"send_test_on_start"`
-	PushError        bool       `yaml:"push_error"`
-	Morning          TaskConfig `yaml:"morning"`
-	Evening          TaskConfig `yaml:"evening"`
+	City            string
+	SendTestOnStart bool
+	PushError       bool
+	Morning         TaskConfig
+	Evening         TaskConfig
 }
 
 type Config struct {
-	Request  RequestConfig  `yaml:"request"`
-	Push     PushConfig     `yaml:"push"`
-	Schedule ScheduleConfig `yaml:"schedule"`
+	Request  RequestConfig
+	Push     PushConfig
+	Schedule ScheduleConfig
 }
 
-func LoadConfig(configPath string) (*Config, error) {
-	if configPath == "" {
-		exe, err := os.Executable()
-		if err != nil {
-			exe = "."
+func getEnv(key, defaultValue string) string {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		return v
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
 		}
-		configPath = filepath.Join(filepath.Dir(exe), "config.yaml")
-		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			configPath = "config.yaml"
+	}
+	return defaultValue
+}
+
+func getEnvList(key string, defaultValue []string) []string {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return defaultValue
+	}
+	parts := strings.Split(v, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
 		}
 	}
+	if len(result) == 0 {
+		return defaultValue
+	}
+	return result
+}
 
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("配置文件不存在: %s", configPath)
+func LoadConfig() (*Config, error) {
+	city := getEnv("CITY", "")
+	if city == "" {
+		return nil, fmt.Errorf("环境变量 CITY 未设置")
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("配置文件格式错误: %w", err)
+	ntfyTopic := getEnv("NTFY_TOPIC", "")
+	if ntfyTopic == "" {
+		return nil, fmt.Errorf("环境变量 NTFY_TOPIC 未设置")
 	}
 
-	if cfg.Push.NtfyServer == "" {
-		cfg.Push.NtfyServer = "https://ntfy.sh"
+	cfg := &Config{
+		Request: RequestConfig{
+			BaseURL: getEnv("BASE_URL", "https://sunsetbot.top/"),
+		},
+		Push: PushConfig{
+			Enable:     getEnvBool("PUSH_ENABLE", true),
+			NtfyServer: getEnv("NTFY_SERVER", "https://ntfy.sh"),
+			NtfyTopic:  ntfyTopic,
+			NtfyToken:  getEnv("NTFY_TOKEN", ""),
+		},
+		Schedule: ScheduleConfig{
+			City:            city,
+			SendTestOnStart: getEnvBool("SEND_TEST_ON_START", false),
+			PushError:       getEnvBool("PUSH_ERROR", true),
+			Morning: TaskConfig{
+				Enable: getEnvBool("MORNING_ENABLE", true),
+				Time:   getEnvList("MORNING_TIME", []string{"18:00", "00:00"}),
+				Model:  getEnvList("MORNING_MODEL", []string{"GFS", "EC"}),
+			},
+			Evening: TaskConfig{
+				Enable: getEnvBool("EVENING_ENABLE", true),
+				Time:   getEnvList("EVENING_TIME", []string{"08:00", "11:30", "16:00"}),
+				Model:  getEnvList("EVENING_MODEL", []string{"GFS", "EC"}),
+			},
+		},
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }

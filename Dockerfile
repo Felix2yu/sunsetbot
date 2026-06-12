@@ -33,7 +33,6 @@ RUN apk add --no-cache tzdata ca-certificates \
 
 # 复制二进制文件
 COPY --from=builder /build/sunsetbot /app/sunsetbot
-COPY config.yaml /app/config.yaml
 
 # 设置执行权限
 RUN chmod +x /app/sunsetbot
