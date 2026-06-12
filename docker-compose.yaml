@@ -1,9 +1,21 @@
 services:
   sunsetbot:
     container_name: sunsetbot
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./config.yaml:/app/config.yaml
+    image: ghcr.io/felix2yu/sunsetbot:latest
+    environment:
+      - CITY=江苏省-苏州
+      - BASE_URL=https://sunsetbot.top/
+      - PUSH_ENABLE=true
+      - NTFY_SERVER=https://ntfy.sh
+      - NTFY_TOPIC=Weather
+      - NTFY_TOKEN=
+      - SEND_TEST_ON_START=false
+      - PUSH_ERROR=true
+      - MORNING_ENABLE=true
+      - MORNING_TIME=18:00,00:00
+      - MORNING_MODEL=GFS,EC
+      - EVENING_ENABLE=true
+      - EVENING_TIME=08:00,11:30,16:00
+      - EVENING_MODEL=GFS,EC
+      - TZ=Asia/Shanghai
     restart: unless-stopped
