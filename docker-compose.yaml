@@ -1,9 +1,9 @@
 services:
   sunsetbot:
     container_name: sunsetbot
-    image: ghcr.io/felix2yu/sunsetbot:latest
-    environment:
-      - PYTHONUNBUFFERED=1
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ./config.yaml:/app/config.yaml
     restart: unless-stopped
