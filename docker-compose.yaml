@@ -1,9 +1,7 @@
 services:
   sunsetbot:
     container_name: sunsetbot
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/felix2yu/sunsetbot:latest
     environment:
       - CITY=江苏省-苏州
       - BASE_URL=https://sunsetbot.top/
