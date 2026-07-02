@@ -395,6 +395,13 @@ async function loadData() {
     const params = getFilters();
     const res = await fetch('/api/data?' + qs(params));
     allRecords = await res.json();
+    allRecords.sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      const aO = a.event_type === 'morning' ? 0 : 1;
+      const bO = b.event_type === 'morning' ? 0 : 1;
+      if (aO !== bO) return aO - bO;
+      return a.time < b.time ? -1 : 1;
+    });
     currentPage = 1;
     renderTable();
     renderCards();
