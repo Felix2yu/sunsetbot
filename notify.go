@@ -80,8 +80,13 @@ func (s *ShoutrrrNotifier) Send(title, body string, priority int, tags []string,
 	message := fmt.Sprintf("%s\n\n%s", title, body)
 
 	// 构建参数
+	markdownVal := "no"
+	if markdown {
+		markdownVal = "yes"
+	}
 	params := &types.Params{
-		"title": title,
+		"title":    title,
+		"markdown": markdownVal,
 	}
 
 	// 优先级映射
@@ -151,10 +156,14 @@ func (n *NtfyNotifier) Send(title, body string, priority int, tags []string, mar
 
 	message := fmt.Sprintf("%s\n\n%s", title, body)
 
+	markdownVal := "no"
+	if markdown {
+		markdownVal = "yes"
+	}
 	params := &types.Params{
 		"title":    title,
 		"priority": fmt.Sprintf("%d", priority),
-		"markdown": fmt.Sprintf("%v", markdown),
+		"markdown": markdownVal,
 	}
 	if len(tags) > 0 {
 		(*params)["tags"] = strings.Join(tags, ",")
