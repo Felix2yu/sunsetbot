@@ -119,7 +119,7 @@ func (s *Store) QueryRecords(city, eventType, startDate, endDate string) ([]Suns
 		query += ` AND date <= ?`
 		args = append(args, endDate)
 	}
-	query += ` ORDER BY city ASC, date DESC, CASE event_type WHEN 'morning' THEN 0 ELSE 1 END ASC, model ASC`
+	query += ` ORDER BY date DESC, CASE event_type WHEN 'morning' THEN 0 ELSE 1 END ASC, model ASC`
 
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
