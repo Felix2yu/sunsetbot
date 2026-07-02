@@ -417,7 +417,7 @@ function renderCards() {
   const pageRecords = allRecords.slice(start, end);
 
   const sorted = [...pageRecords].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     const aO = a.event_type === 'morning' ? 0 : 1;
     const bO = b.event_type === 'morning' ? 0 : 1;
     if (aO !== bO) return aO - bO;
@@ -432,7 +432,7 @@ function renderCards() {
   });
 
   let html = '';
-  Object.keys(groups).sort().forEach(date => {
+  Object.keys(groups).sort().reverse().forEach(date => {
     const evts = groups[date];
     html += `<div class="date-group"><div class="date-header">${escapeHtml(date)}</div>`;
     ['morning', 'evening'].forEach(eType => {
@@ -479,7 +479,7 @@ function renderTable() {
   const pageRecords = allRecords.slice(start, end);
 
   const sorted = [...pageRecords].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     const aOrder = a.event_type === 'morning' ? 0 : 1;
     const bOrder = b.event_type === 'morning' ? 0 : 1;
     if (aOrder !== bOrder) return aOrder - bOrder;
@@ -497,7 +497,7 @@ function renderTable() {
   });
 
   let html = '';
-  const dates = Object.keys(groups).sort();
+  const dates = Object.keys(groups).sort().reverse();
   dates.forEach(date => {
     const evts = groups[date];
     html += `<div class="date-group"><div class="date-header">${escapeHtml(date)}</div>`;
