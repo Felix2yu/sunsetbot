@@ -96,7 +96,7 @@ func StartWebServer(port string, store *Store, logger *log.Logger) {
 		}
 		w.Header().Set("Content-Type", "application/javascript")
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Write([]byte(`const CACHE_VERSION = 'v3';
+		w.Write([]byte(`const CACHE_VERSION = 'v4';
 const STATIC_CACHE = 'liuxia-static-' + CACHE_VERSION;
 const DATA_CACHE = 'liuxia-data-' + CACHE_VERSION;
 const STATIC_ASSETS = ['/', '/manifest.json', '/static/icons/icon-180x180.png', '/static/icons/icon-192x192.png', '/static/icons/icon-512x512.png', '/offline.html'];
