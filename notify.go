@@ -80,13 +80,8 @@ func (s *ShoutrrrNotifier) Send(title, body string, priority int, tags []string,
 	message := fmt.Sprintf("%s\n\n%s", title, body)
 
 	// 构建参数
-	markdownVal := "no"
-	if markdown {
-		markdownVal = "yes"
-	}
 	params := &types.Params{
-		"title":    title,
-		"markdown": markdownVal,
+		"title": title,
 	}
 
 	// 优先级映射
@@ -107,23 +102,57 @@ func (s *ShoutrrrNotifier) Send(title, body string, priority int, tags []string,
 		(*params)["tags"] = strings.Join(tags, ",")
 	}
 
-	// sender.Send 返回 []error
-	errs := sender.Send(message, params)
-	if len(errs) > 0 {
-		// 收集所有错误
-		var errMessages []string
-		for _, e := range errs {
-			if e != nil {
-				errMessages = append(errMessages, e.Error())
+	// 先尝试带 markdown 参数发送
+	if markdown {
+		markdownParams := *params
+		markdownParams["markdown"] = "yes"
+		errs := sender.Send(message, &markdownParams)
+		if !hasUnsupportedParamError(errs) {
+			if err := s.checkErrors(errs); err != nil {
+				return err
 			}
+			s.logSuccess(priority)
+			return nil
 		}
-		if len(errMessages) > 0 {
-			return fmt.Errorf("推送失败: %s", strings.Join(errMessages, "; "))
-		}
+		// 如果因为参数不支持而失败，降级为不带 markdown 重试
+		s.logger.Printf("[推送降级] 目标不支持 markdown 参数，降级为纯文本推送")
 	}
 
-	s.logger.Printf("[推送成功] 通知已发送, 优先级: %d", priority)
+	// 不带 markdown 发送
+	errs := sender.Send(message, params)
+	if err := s.checkErrors(errs); err != nil {
+		return err
+	}
+	s.logSuccess(priority)
 	return nil
+}
+
+// hasUnsupportedParamError 检查错误中是否包含不支持的参数错误
+func hasUnsupportedParamError(errs []error) bool {
+	for _, e := range errs {
+		if e != nil && strings.Contains(e.Error(), "is not a valid config key") {
+			return true
+		}
+	}
+	return false
+}
+
+// checkErrors 检查错误列表，有错误则返回汇总错误
+func (s *ShoutrrrNotifier) checkErrors(errs []error) error {
+	var errMessages []string
+	for _, e := range errs {
+		if e != nil {
+			errMessages = append(errMessages, e.Error())
+		}
+	}
+	if len(errMessages) > 0 {
+		return fmt.Errorf("推送失败: %s", strings.Join(errMessages, "; "))
+	}
+	return nil
+}
+
+func (s *ShoutrrrNotifier) logSuccess(priority int) {
+	s.logger.Printf("[推送成功] 通知已发送, 优先级: %d", priority)
 }
 
 // NtfyNotifier ntfy 直连通知实现（向后兼容）
@@ -156,14 +185,9 @@ func (n *NtfyNotifier) Send(title, body string, priority int, tags []string, mar
 
 	message := fmt.Sprintf("%s\n\n%s", title, body)
 
-	markdownVal := "no"
-	if markdown {
-		markdownVal = "yes"
-	}
 	params := &types.Params{
 		"title":    title,
 		"priority": fmt.Sprintf("%d", priority),
-		"markdown": markdownVal,
 	}
 	if len(tags) > 0 {
 		(*params)["tags"] = strings.Join(tags, ",")
