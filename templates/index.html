@@ -927,18 +927,29 @@ function renderCharts(records) {
     const label = `${typeMap[eventType] || eventType} ${model}`;
     const color = (lineColors[eventType] && lineColors[eventType][model]) || '#999';
 
-    // 构建数据，标记哪些位置是 null
     const data = labels.map(d => { const rec = items.find(i => i.date === d); return rec ? rec[field] : null; });
 
-    // 如果有间隔，整条线用虚线；无间隔用实线
-    const hasGap = data.some(v => v === null);
+    // 只在中间有断裂时用虚线：找到第一个和最后一个非null值的位置，检查中间是否有null
+    let hasInternalGap = false;
+    let firstIdx = -1, lastIdx = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] != null) {
+        if (firstIdx === -1) firstIdx = i;
+        lastIdx = i;
+      }
+    }
+    if (firstIdx !== -1 && lastIdx !== -1) {
+      for (let i = firstIdx; i <= lastIdx; i++) {
+        if (data[i] === null) { hasInternalGap = true; break; }
+      }
+    }
 
     return {
       label,
       data,
       borderColor: color,
       backgroundColor: color,
-      borderDash: hasGap ? [6, 3] : undefined,
+      borderDash: hasInternalGap ? [6, 3] : undefined,
       tension: 0.3,
       fill: false,
       pointRadius: 3,
