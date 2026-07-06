@@ -53,26 +53,41 @@
   .controls button.secondary:hover { background: var(--hover-bg); }
   .controls button.secondary.active { background: #e67e22; color: #fff; }
   .today-tomorrow { background: var(--card-bg); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: background 0.3s; overflow: hidden; }
-  .today-tomorrow-header { background: #e67e22; color: #fff; padding: 12px 20px; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .today-tomorrow-header { background: linear-gradient(135deg, #e67e22, #f39c12); color: #fff; padding: 12px 20px; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
   .today-tomorrow-body { padding: 16px 20px; }
-  .day-section { margin-bottom: 16px; }
-  .day-section:last-child { margin-bottom: 0; }
-  .day-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .day-title .date { color: var(--text-color); }
-  .event-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .event-card { background: var(--bg-color); border-radius: 6px; padding: 12px; border-left: 4px solid #e67e22; }
-  .event-card.morning { border-left-color: #f39c12; }
-  .event-card.evening { border-left-color: #3498db; }
-  .event-card .event-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-  .event-card .event-name .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-  .event-card .event-name .tag-morning { background: #ffeaa7; color: #d35400; }
-  .event-card .event-name .tag-evening { background: #dfe6e9; color: #2d3436; }
-  .event-card .model-info { margin-top: 8px; }
-  .event-card .model-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; }
-  .event-card .model-name { font-weight: 600; color: var(--text-secondary); }
-  .event-card .metric-value { display: flex; align-items: center; gap: 4px; }
-  .event-card .quality-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-  .event-card .aod-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #dfe6e9; color: #636e72; }
+  .tt-days { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tt-day { background: var(--bg-color); border-radius: 8px; padding: 16px; }
+  .tt-day-label { font-size: 15px; font-weight: 700; color: var(--text-color); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .tt-day-label .weekday { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+  .tt-event { margin-bottom: 14px; }
+  .tt-event:last-child { margin-bottom: 0; }
+  .tt-event-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tt-event-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tt-event-icon.morning { background: linear-gradient(135deg, #f39c12, #e74c3c); }
+  .tt-event-icon.evening { background: linear-gradient(135deg, #e74c3c, #8e44ad); }
+  .tt-event-icon svg { width: 16px; height: 16px; fill: #fff; }
+  .tt-event-title { font-size: 14px; font-weight: 600; color: var(--text-color); }
+  .tt-event-time { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+  .tt-models { display: flex; flex-direction: column; gap: 8px; }
+  .tt-model { }
+  .tt-model-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .tt-model-name .tt-label-text { font-weight: 400; }
+  .tt-gauge { position: relative; height: 22px; border-radius: 11px; overflow: hidden; background: var(--border-color); }
+  .tt-gauge-fill { height: 100%; border-radius: 11px; transition: width 0.6s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+  .tt-gauge-fill span { font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3); white-space: nowrap; }
+  .tt-gauge-quality-low .tt-gauge-fill { background: linear-gradient(90deg, #bdc3c7, #95a5a6); }
+  .tt-gauge-quality-mid .tt-gauge-fill { background: linear-gradient(90deg, #f39c12, #e67e22); }
+  .tt-gauge-quality-high .tt-gauge-fill { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+  .tt-gauge-aod-good .tt-gauge-fill { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+  .tt-gauge-aod-ok .tt-gauge-fill { background: linear-gradient(90deg, #3498db, #2980b9); }
+  .tt-gauge-aod-bad .tt-gauge-fill { background: linear-gradient(90deg, #95a5a6, #7f8c8d); }
+  .tt-no-data { display: flex; align-items: center; justify-content: center; height: 80px; color: var(--text-secondary); font-size: 13px; }
+  .tt-no-data-day { background: var(--bg-color); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; }
+  .tt-no-data-day svg { width: 40px; height: 40px; margin-bottom: 8px; opacity: 0.3; }
+  .tt-summary { margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; }
+  .tt-summary.good { background: rgba(46,204,113,.1); color: #27ae60; }
+  .tt-summary.mid { background: rgba(243,156,18,.1); color: #e67e22; }
+  .tt-summary.bad { background: rgba(189,195,199,.15); color: #7f8c8d; }
   .no-data { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px; }
   .chart-box { background: var(--card-bg); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: background 0.3s; }
   .chart-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; user-select: none; }
@@ -144,6 +159,7 @@
     .quick-range button { flex: 0 0 auto; font-size: 13px; padding: 5px 10px; }
     #cardList { display: block; }
     .table-wrap { display: none; }
+    .tt-days { grid-template-columns: 1fr; }
   }
   @media (min-width: 769px) {
     .table-wrap { display: block; }
@@ -321,9 +337,12 @@ function renderTodayTomorrow(records) {
     return;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
   dateEl.textContent = `${today} ~ ${tomorrow}`;
+
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 
   const grouped = {};
   records.forEach(r => {
@@ -332,56 +351,117 @@ function renderTodayTomorrow(records) {
     grouped[r.date][r.event_type][r.model] = r;
   });
 
-  let html = '';
-  const dates = [today, tomorrow];
-  dates.forEach(date => {
+  const sunIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const moonIcon = '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  let html = '<div class="tt-days">';
+  const dates = [
+    { key: today, label: '今天' },
+    { key: tomorrow, label: '明天' }
+  ];
+
+  dates.forEach(({ key: date, label }) => {
+    const d = new Date(date + 'T00:00:00');
+    const wd = weekdays[d.getDay()];
     const evts = grouped[date];
-    if (!evts) {
-      html += `<div class="day-section">
-        <div class="day-title"><span class="date">${date}</span> <span class="tag tag-morning">无数据</span></div>
+
+    if (!evts || Object.keys(evts).length === 0) {
+      html += `<div class="tt-no-data-day">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span>${label}（${date}）暂无数据</span>
       </div>`;
       return;
     }
 
-    html += `<div class="day-section"><div class="day-title"><span class="date">${date}</span></div><div class="event-cards">`;
+    html += `<div class="tt-day"><div class="tt-day-label">${label} <span class="weekday">${date} 周${wd}</span></div>`;
 
     ['morning', 'evening'].forEach(eType => {
       const models = evts[eType];
       if (!models) return;
 
-      const tagClass = eType === 'morning' ? 'tag-morning' : 'tag-evening';
-      const typeName = eType === 'morning' ? '朝霞' : '晚霞';
+      const isMorning = eType === 'morning';
+      const typeName = isMorning ? '朝霞' : '晚霞';
+      const icon = isMorning ? sunIcon : moonIcon;
+      const time = Object.values(models)[0]?.time || '';
 
-      html += `<div class="event-card ${eType}">
-        <div class="event-name"><span class="tag ${tagClass}">${typeName}</span></div>
-        <div class="model-info">`;
+      html += `<div class="tt-event">
+        <div class="tt-event-head">
+          <div class="tt-event-icon ${eType}">${icon}</div>
+          <span class="tt-event-title">${typeName}</span>
+          <span class="tt-event-time">${time}</span>
+        </div>
+        <div class="tt-models">`;
 
       ['GFS', 'EC'].forEach(m => {
         const r = models[m];
         if (!r) {
-          html += `<div class="model-row"><span class="model-name">${m}</span><span class="metric-value">-</span></div>`;
+          html += `<div class="tt-model"><div class="tt-model-name">${m}<span class="tt-label-text">暂无数据</span></div></div>`;
           return;
         }
 
-        const qualityText = r.quality != null ? r.quality.toFixed(4) : '-';
-        const aodText = r.aod != null ? r.aod.toFixed(4) : '-';
-        const qualityClass = r.quality == null ? 'q-low' : r.quality < 0.2 ? 'q-low' : r.quality < 0.8 ? 'q-mid' : 'q-high';
+        const q = r.quality;
+        const a = r.aod;
 
-        html += `<div class="model-row">
-          <span class="model-name">${m}</span>
-          <span class="metric-value">
-            <span class="quality-badge ${qualityClass}">${qualityText}</span>
-            <span class="aod-badge">${aodText}</span>
-          </span>
+        // Quality gauge
+        const qPct = q != null ? Math.min(q / 2.5 * 100, 100) : 0;
+        const qLabel = qualityLabel(q);
+        let qGaugeClass = 'tt-gauge-quality-low';
+        if (q != null && q >= 0.8) qGaugeClass = 'tt-gauge-quality-high';
+        else if (q != null && q >= 0.2) qGaugeClass = 'tt-gauge-quality-mid';
+
+        // AOD gauge (inverted: lower is better)
+        const aPct = a != null ? Math.min(a / 1.0 * 100, 100) : 0;
+        const aLabel = aodLabel(a);
+        let aGaugeClass = 'tt-gauge-aod-good';
+        if (a != null && a >= 0.6) aGaugeClass = 'tt-gauge-aod-bad';
+        else if (a != null && a >= 0.3) aGaugeClass = 'tt-gauge-aod-ok';
+
+        html += `<div class="tt-model">
+          <div class="tt-model-name">${m}</div>
+          <div class="tt-gauge ${qGaugeClass}">
+            <div class="tt-gauge-fill" style="width:${q != null ? Math.max(qPct, 8) : 0}%">
+              <span>${q != null ? q.toFixed(2) : '-'}</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 6px;display:flex;justify-content:space-between">
+            <span>鲜艳度 · ${qLabel}</span>
+          </div>
+          <div class="tt-gauge ${aGaugeClass}">
+            <div class="tt-gauge-fill" style="width:${a != null ? Math.max(aPct, 8) : 0}%">
+              <span>${a != null ? a.toFixed(2) : '-'}</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 0;display:flex;justify-content:space-between">
+            <span>气溶胶 · ${aLabel}</span>
+          </div>
         </div>`;
       });
 
-      html += `</div></div>`;
+      html += '</div></div>';
     });
 
-    html += `</div></div>`;
+    // Summary
+    const allQualities = [];
+    ['morning', 'evening'].forEach(eType => {
+      const models = evts[eType];
+      if (!models) return;
+      Object.values(models).forEach(r => {
+        if (r.quality != null) allQualities.push(r.quality);
+      });
+    });
+    if (allQualities.length > 0) {
+      const maxQ = Math.max(...allQualities);
+      let summaryClass = 'bad', summaryText = '';
+      if (maxQ >= 0.8) { summaryClass = 'good'; summaryText = `${label}有大烧潜力，值得期待！`; }
+      else if (maxQ >= 0.4) { summaryClass = 'mid'; summaryText = `${label}表现尚可，值得关注`; }
+      else { summaryText = `${label}霞光一般`; }
+      html += `<div class="tt-summary ${summaryClass}">${summaryText}</div>`;
+    }
+
+    html += '</div>';
   });
 
+  html += '</div>';
   body.innerHTML = html;
 }
 
