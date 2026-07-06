@@ -219,7 +219,7 @@
 
   <div class="chart-box" data-chart="aod">
     <div class="chart-header" onclick="toggleChart('aod')">
-      <h2>气溶胶趋势</h2>
+      <h2>通透度趋势</h2>
       <div class="actions">
         <button class="chart-icon-btn" title="下载图片" onclick="event.stopPropagation();downloadChart('aodChart', '气溶胶趋势')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
         <button class="chart-icon-btn" id="toggle-aod" title="收起"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -827,7 +827,7 @@ function renderBestDates(dates) {
 
   const labels = dates.map(d => d.date + ' ' + (d.time || '') + ' ' + typeMap[d.event_type] + ' ' + d.model);
   const qualityData = dates.map(d => d.quality != null ? parseFloat(d.quality.toFixed(4)) : 0);
-  const aodData = dates.map(d => d.aod != null ? parseFloat(d.aod.toFixed(4)) : 0);
+  const aodData = dates.map(d => d.aod != null ? parseFloat((Math.max(0, 1 - d.aod)).toFixed(4)) : 0);
 
   bestDatesChart = new Chart(document.getElementById('bestDatesChart'), {
     type: 'bar',
@@ -835,7 +835,7 @@ function renderBestDates(dates) {
       labels,
       datasets: [
         { label: '鲜艳度', data: qualityData, backgroundColor: '#e67e22' },
-        { label: '气溶胶', data: aodData, backgroundColor: '#3498db' },
+        { label: '通透度', data: aodData, backgroundColor: '#3498db' },
       ],
     },
     options: {
@@ -859,7 +859,7 @@ function renderSeasonChart(seasons) {
       labels: seasons.map(s => s.season),
       datasets: [
         { label: '平均鲜艳度', data: seasons.map(s => s.avg_quality ? parseFloat(s.avg_quality.toFixed(4)) : 0), backgroundColor: seasons.map(s => seasonColors[s.season] || '#999') },
-        { label: '平均气溶胶', data: seasons.map(s => s.avg_aod ? parseFloat(s.avg_aod.toFixed(4)) : 0), backgroundColor: seasons.map(s => (seasonColors[s.season] || '#999') + '80') },
+        { label: '平均通透度', data: seasons.map(s => s.avg_aod != null ? parseFloat((Math.max(0, 1 - s.avg_aod)).toFixed(4)) : 0), backgroundColor: seasons.map(s => (seasonColors[s.season] || '#999') + '80') },
       ],
     },
     options: {
@@ -922,12 +922,12 @@ function renderCharts(records) {
 
   const labels = [...new Set(records.map(r => r.date))].sort();
 
-  const makeDatasets = (field) => Object.entries(grouped).map(([key, items]) => {
+  const makeDatasets = (field, transform) => Object.entries(grouped).map(([key, items]) => {
     const [model, eventType] = key.split('_');
     const label = `${typeMap[eventType] || eventType} ${model}`;
     const color = (lineColors[eventType] && lineColors[eventType][model]) || '#999';
 
-    const data = labels.map(d => { const rec = items.find(i => i.date === d); return rec ? rec[field] : null; });
+    const data = labels.map(d => { const rec = items.find(i => i.date === d); const v = rec ? rec[field] : null; return v != null && transform ? transform(v) : v; });
 
     // 只在中间有断裂时用虚线：找到第一个和最后一个非null值的位置，检查中间是否有null
     let hasInternalGap = false;
@@ -966,8 +966,8 @@ function renderCharts(records) {
   });
 
   aodChart = new Chart(document.getElementById('aodChart'), {
-    type: 'line', data: { labels, datasets: makeDatasets('aod') },
-    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    type: 'line', data: { labels, datasets: makeDatasets('aod', v => Math.max(0, 1 - v)) },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, max: 1 } } }
   });
 }
 
@@ -994,10 +994,10 @@ function renderModelCompare(models) {
   }));
 
   const aodData = modelNames.map(model => ({
-    label: model + ' 气溶胶',
+    label: model + ' 通透度',
     data: eventTypes.map(et => {
       const found = grouped[et]?.find(m => m.model === model);
-      return found ? parseFloat(found.avg_aod?.toFixed(4)) : 0;
+      return found && found.avg_aod != null ? parseFloat((Math.max(0, 1 - found.avg_aod)).toFixed(4)) : 0;
     }),
     backgroundColor: eventTypes.map(et => ((lineColors[et] && lineColors[et][model]) || '#999') + '80'),
   }));
@@ -1037,8 +1037,8 @@ function renderMonthly(monthly) {
           yAxisID: 'y',
         },
         {
-          label: '平均气溶胶',
-          data: monthly.map(m => m.avg_aod ? parseFloat(m.avg_aod.toFixed(4)) : 0),
+          label: '平均通透度',
+          data: monthly.map(m => m.avg_aod != null ? parseFloat((Math.max(0, 1 - m.avg_aod)).toFixed(4)) : 0),
           borderColor: '#3498db',
           tension: 0.3,
           fill: false,
@@ -1058,7 +1058,7 @@ function renderMonthly(monthly) {
         y1: {
           type: 'linear',
           position: 'right',
-          title: { display: true, text: '气溶胶' },
+          title: { display: true, text: '通透度' },
           grid: { drawOnChartArea: false },
         },
       },
