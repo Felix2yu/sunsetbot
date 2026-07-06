@@ -907,8 +907,10 @@ function clarityLabel(c) {
 }
 
 const typeMap = { morning: '朝霞', evening: '晚霞' };
-const modelColors = { GFS: '#3498db', EC: '#e74c3c' };
-const typeMarkers = { morning: '', evening: '90' };
+const lineColors = {
+  morning: { GFS: '#e67e22', EC: '#d35400' },
+  evening: { GFS: '#3498db', EC: '#8e44ad' },
+};
 
 function renderCharts(records) {
   const grouped = {};
@@ -922,18 +924,25 @@ function renderCharts(records) {
 
   const makeDatasets = (field) => Object.entries(grouped).map(([key, items]) => {
     const [model, eventType] = key.split('_');
-    const label = `${model}-${typeMap[eventType] || eventType}`;
-    const baseColor = modelColors[model] || '#999';
-    const color = typeMarkers[eventType] ? baseColor + typeMarkers[eventType] : baseColor;
+    const label = `${typeMap[eventType] || eventType} ${model}`;
+    const color = (lineColors[eventType] && lineColors[eventType][model]) || '#999';
+
+    // 构建数据，标记哪些位置是 null
     const data = labels.map(d => { const rec = items.find(i => i.date === d); return rec ? rec[field] : null; });
+
+    // 如果有间隔，整条线用虚线；无间隔用实线
     const hasGap = data.some(v => v === null);
+
     return {
       label,
       data,
       borderColor: color,
-      borderDash: hasGap ? [5, 5] : undefined,
+      backgroundColor: color,
+      borderDash: hasGap ? [6, 3] : undefined,
       tension: 0.3,
       fill: false,
+      pointRadius: 3,
+      pointHoverRadius: 5,
     };
   });
 
@@ -970,7 +979,7 @@ function renderModelCompare(models) {
       const found = grouped[et]?.find(m => m.model === model);
       return found ? parseFloat(found.avg_quality?.toFixed(4)) : 0;
     }),
-    backgroundColor: modelColors[model] || '#999',
+    backgroundColor: eventTypes.map(et => (lineColors[et] && lineColors[et][model]) || '#999'),
   }));
 
   const aodData = modelNames.map(model => ({
@@ -979,7 +988,7 @@ function renderModelCompare(models) {
       const found = grouped[et]?.find(m => m.model === model);
       return found ? parseFloat(found.avg_aod?.toFixed(4)) : 0;
     }),
-    backgroundColor: modelColors[model] ? modelColors[model] + '80' : '#999800',
+    backgroundColor: eventTypes.map(et => ((lineColors[et] && lineColors[et][model]) || '#999') + '80'),
   }));
 
   if (modelCompareChart) modelCompareChart.destroy();
