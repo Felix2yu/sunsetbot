@@ -728,6 +728,7 @@ function renderTable() {
         const aodBadge = r.aod != null
           ? `<span class="aod-badge ${r.aod < 0.2 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod.toFixed(4)}</span>`
           : '-';
+        const aodLbl = aodLabel(r.aod);
         html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qLabel}</span><span class="metric">气溶胶 ${aodBadge} ${aodLbl}</span></div>`;
       });
       html += `</div></div>`;
