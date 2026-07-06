@@ -73,14 +73,16 @@
   .tt-model-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: flex; justify-content: space-between; }
   .tt-model-name .tt-label-text { font-weight: 400; }
   .tt-gauge { position: relative; height: 22px; border-radius: 11px; overflow: hidden; background: var(--border-color); }
-  .tt-gauge-fill { height: 100%; border-radius: 11px; transition: width 0.6s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+  .tt-gauge-fill { height: 100%; border-radius: 11px; transition: width 0.6s ease; display: flex; align-items: center; padding: 0 8px; min-width: 0; }
   .tt-gauge-fill span { font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3); white-space: nowrap; }
+  .tt-gauge-fill.g-right { justify-content: flex-end; }
+  .tt-gauge-fill.g-left { justify-content: flex-start; }
   .tt-gauge-quality-low .tt-gauge-fill { background: linear-gradient(90deg, #bdc3c7, #95a5a6); }
   .tt-gauge-quality-mid .tt-gauge-fill { background: linear-gradient(90deg, #f39c12, #e67e22); }
   .tt-gauge-quality-high .tt-gauge-fill { background: linear-gradient(90deg, #e74c3c, #c0392b); }
-  .tt-gauge-aod-good .tt-gauge-fill { background: linear-gradient(90deg, #2ecc71, #27ae60); }
-  .tt-gauge-aod-ok .tt-gauge-fill { background: linear-gradient(90deg, #3498db, #2980b9); }
-  .tt-gauge-aod-bad .tt-gauge-fill { background: linear-gradient(90deg, #95a5a6, #7f8c8d); }
+  .tt-gauge-clarity-low .tt-gauge-fill { background: linear-gradient(90deg, #bdc3c7, #95a5a6); }
+  .tt-gauge-clarity-mid .tt-gauge-fill { background: linear-gradient(90deg, #3498db, #2980b9); }
+  .tt-gauge-clarity-high .tt-gauge-fill { background: linear-gradient(90deg, #2ecc71, #27ae60); }
   .tt-no-data { display: flex; align-items: center; justify-content: center; height: 80px; color: var(--text-secondary); font-size: 13px; }
   .tt-no-data-day { background: var(--bg-color); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; }
   .tt-no-data-day svg { width: 40px; height: 40px; margin-bottom: 8px; opacity: 0.3; }
@@ -410,37 +412,38 @@ function renderTodayTomorrow(records) {
         const q = r.quality;
         const a = r.aod;
 
-        // Quality gauge
+        // 鲜艳度：越高越好
         const qPct = q != null ? Math.min(q / 2.5 * 100, 100) : 0;
         const qLabel = qualityLabel(q);
         let qGaugeClass = 'tt-gauge-quality-low';
         if (q != null && q >= 0.8) qGaugeClass = 'tt-gauge-quality-high';
         else if (q != null && q >= 0.2) qGaugeClass = 'tt-gauge-quality-mid';
 
-        // AOD gauge (inverted: lower is better)
-        const aPct = a != null ? Math.min(a / 1.0 * 100, 100) : 0;
-        const aLabel = aodLabel(a);
-        let aGaugeClass = 'tt-gauge-aod-good';
-        if (a != null && a >= 0.6) aGaugeClass = 'tt-gauge-aod-bad';
-        else if (a != null && a >= 0.3) aGaugeClass = 'tt-gauge-aod-ok';
+        // 通透度：气溶胶越低越好，反转展示
+        const clarity = a != null ? Math.max(0, 1 - a / 1.0) : null;
+        const cPct = clarity != null ? Math.min(clarity * 100, 100) : 0;
+        const cLabel = clarityLabel(clarity);
+        let cGaugeClass = 'tt-gauge-clarity-low';
+        if (clarity != null && clarity >= 0.6) cGaugeClass = 'tt-gauge-clarity-high';
+        else if (clarity != null && clarity >= 0.4) cGaugeClass = 'tt-gauge-clarity-mid';
 
         html += `<div class="tt-model">
           <div class="tt-model-name">${m}</div>
           <div class="tt-gauge ${qGaugeClass}">
-            <div class="tt-gauge-fill" style="width:${q != null ? Math.max(qPct, 8) : 0}%">
-              <span>${q != null ? q.toFixed(2) : '-'}</span>
+            <div class="tt-gauge-fill g-right" style="width:${q != null ? Math.max(qPct, 8) : 0}%">
+              ${q != null ? `<span>${q.toFixed(2)}</span>` : ''}
             </div>
           </div>
           <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 6px;display:flex;justify-content:space-between">
             <span>鲜艳度 · ${qLabel}</span>
           </div>
-          <div class="tt-gauge ${aGaugeClass}">
-            <div class="tt-gauge-fill" style="width:${a != null ? Math.max(aPct, 8) : 0}%">
-              <span>${a != null ? a.toFixed(2) : '-'}</span>
+          <div class="tt-gauge ${cGaugeClass}">
+            <div class="tt-gauge-fill g-right" style="width:${clarity != null ? Math.max(cPct, 8) : 0}%">
+              ${clarity != null ? `<span>${a.toFixed(2)}</span>` : ''}
             </div>
           </div>
           <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 0;display:flex;justify-content:space-between">
-            <span>气溶胶 · ${aLabel}</span>
+            <span>通透度 · ${cLabel}</span>
           </div>
         </div>`;
       });
@@ -906,6 +909,17 @@ function aodLabel(v) {
   if (v < 0.6) return '小污';
   if (v < 0.8) return '中污';
   return '重污';
+}
+
+function clarityLabel(c) {
+  if (c == null) return '-';
+  if (c >= 0.9) return '极致通透';
+  if (c >= 0.8) return '非常通透';
+  if (c >= 0.7) return '通透';
+  if (c >= 0.6) return '较通透';
+  if (c >= 0.4) return '一般';
+  if (c >= 0.2) return '略浑浊';
+  return '浑浊';
 }
 
 const typeMap = { morning: '朝霞', evening: '晚霞' };
