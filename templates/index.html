@@ -152,6 +152,10 @@
   .q-low { background: #dfe6e9; color: #636e72; }
   .q-mid { background: #ffeaa7; color: #d35400; }
   .q-high { background: #e17055; color: #fff; }
+  .aod-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+  .aod-low { background: #3498db; color: #fff; }
+  .aod-mid { background: #dfe6e9; color: #636e72; }
+  .aod-high { background: #636e72; color: #fff; }
   @media (max-width: 768px) {
     .container { padding: 10px; }
     .header h1 { font-size: 20px; }
@@ -652,7 +656,7 @@ function renderCards() {
         const qBadge = r.quality != null
           ? `<span class="quality-badge ${r.quality < 0.2 ? 'q-low' : r.quality < 0.8 ? 'q-mid' : 'q-high'}">${r.quality.toFixed(4)}</span>`
           : '-';
-        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qualityLabel(r.quality)}</span><span class="metric">气溶胶 <b>${r.aod != null ? r.aod.toFixed(4) : '-'}</b> ${aodLabel(r.aod)}</span></div>`;
+        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qualityLabel(r.quality)}</span><span class="metric">气溶胶 <span class="aod-badge ${r.aod < 0.2 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod != null ? r.aod.toFixed(4) : '-'}</span> ${aodLabel(r.aod)}</span></div>`;
       });
       html += `</div></div>`;
     });
@@ -721,9 +725,10 @@ function renderTable() {
           ? `<span class="quality-badge ${r.quality < 0.2 ? 'q-low' : r.quality < 0.8 ? 'q-mid' : 'q-high'}">${r.quality.toFixed(4)}</span>`
           : '-';
         const qLabel = qualityLabel(r.quality);
-        const aodVal = r.aod != null ? r.aod.toFixed(4) : '-';
-        const aodLbl = aodLabel(r.aod);
-        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qLabel}</span><span class="metric">气溶胶 <b>${aodVal}</b> ${aodLbl}</span></div>`;
+        const aodBadge = r.aod != null
+          ? `<span class="aod-badge ${r.aod < 0.2 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod.toFixed(4)}</span>`
+          : '-';
+        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qLabel}</span><span class="metric">气溶胶 ${aodBadge} ${aodLbl}</span></div>`;
       });
       html += `</div></div>`;
     });
