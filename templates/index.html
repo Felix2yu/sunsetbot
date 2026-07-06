@@ -67,11 +67,12 @@
   .tt-event-icon.evening { background: linear-gradient(135deg, #e74c3c, #8e44ad); }
   .tt-event-icon svg { width: 16px; height: 16px; fill: #fff; }
   .tt-event-title { font-size: 14px; font-weight: 600; color: var(--text-color); }
-  .tt-event-time { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+  .tt-event-time { font-size: 11px; color: var(--text-secondary); }
+  .tt-verdict { font-size: 12px; font-weight: 600; margin-left: auto; padding: 2px 8px; border-radius: 10px; }
+  .tt-verdict.good { background: rgba(46,204,113,.15); color: #27ae60; }
+  .tt-verdict.mid { background: rgba(243,156,18,.15); color: #e67e22; }
+  .tt-verdict.bad { background: rgba(189,195,199,.2); color: #95a5a6; }
   .tt-models { display: flex; flex-direction: column; gap: 8px; }
-  .tt-model { }
-  .tt-model-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: flex; justify-content: space-between; }
-  .tt-model-name .tt-label-text { font-weight: 400; }
   .tt-gauge { position: relative; height: 22px; border-radius: 11px; overflow: hidden; background: var(--border-color); }
   .tt-gauge-fill { height: 100%; border-radius: 11px; transition: width 0.6s ease; display: flex; align-items: center; padding: 0 8px; min-width: 0; }
   .tt-gauge-fill span { font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3); white-space: nowrap; }
@@ -86,10 +87,6 @@
   .tt-no-data { display: flex; align-items: center; justify-content: center; height: 80px; color: var(--text-secondary); font-size: 13px; }
   .tt-no-data-day { background: var(--bg-color); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; }
   .tt-no-data-day svg { width: 40px; height: 40px; margin-bottom: 8px; opacity: 0.3; }
-  .tt-summary { margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; }
-  .tt-summary.good { background: rgba(46,204,113,.1); color: #27ae60; }
-  .tt-summary.mid { background: rgba(243,156,18,.1); color: #e67e22; }
-  .tt-summary.bad { background: rgba(189,195,199,.15); color: #7f8c8d; }
   .no-data { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px; }
   #updateBanner { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #e67e22; color: #fff; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 2000; cursor: pointer; transition: opacity .3s, transform .3s; }
   #updateBanner:hover { background: #d35400; }
@@ -394,80 +391,67 @@ function renderTodayTomorrow(records) {
       const icon = isMorning ? sunIcon : moonIcon;
       const time = Object.values(models)[0]?.time || '';
 
+      // 合并两个模型：取最好的鲜艳度 + 最好的通透度
+      const allR = Object.values(models).filter(r => r);
+      const qValues = allR.map(r => r.quality).filter(v => v != null);
+      const aValues = allR.map(r => r.aod).filter(v => v != null);
+      const bestQ = qValues.length > 0 ? Math.max(...qValues) : null;
+      const bestA = aValues.length > 0 ? Math.min(...aValues) : null;
+      const clarity = bestA != null ? Math.max(0, 1 - bestA / 1.0) : null;
+
+      // 鲜艳度进度条
+      const qPct = bestQ != null ? Math.min(bestQ / 2.5 * 100, 100) : 0;
+      let qGaugeClass = 'tt-gauge-quality-low';
+      if (bestQ != null && bestQ >= 0.8) qGaugeClass = 'tt-gauge-quality-high';
+      else if (bestQ != null && bestQ >= 0.2) qGaugeClass = 'tt-gauge-quality-mid';
+
+      // 通透度进度条
+      const cPct = clarity != null ? Math.min(clarity * 100, 100) : 0;
+      let cGaugeClass = 'tt-gauge-clarity-low';
+      if (clarity != null && clarity >= 0.6) cGaugeClass = 'tt-gauge-clarity-high';
+      else if (clarity != null && clarity >= 0.4) cGaugeClass = 'tt-gauge-clarity-mid';
+
+      // 结论
+      let verdict = '', verdictClass = 'bad';
+      if (bestQ != null && bestQ >= 1.0) { verdict = isMorning ? '值得早起！' : '值得等待！'; verdictClass = 'good'; }
+      else if (bestQ != null && bestQ >= 0.6) { verdict = isMorning ? '可以早起看看' : '可以等等看'; verdictClass = 'mid'; }
+      else if (bestQ != null && bestQ >= 0.3) { verdict = '一般般'; verdictClass = 'mid'; }
+      else { verdict = '不太值得'; verdictClass = 'bad'; }
+
+      // 模型数值文本
+      const modelTexts = ['GFS', 'EC'].map(m => {
+        const r = models[m];
+        if (!r) return null;
+        const q = r.quality != null ? r.quality.toFixed(2) : '-';
+        return `${m} ${q}`;
+      }).filter(Boolean).join(' / ');
+
       html += `<div class="tt-event">
         <div class="tt-event-head">
           <div class="tt-event-icon ${eType}">${icon}</div>
           <span class="tt-event-title">${typeName}</span>
           <span class="tt-event-time">${time}</span>
+          <span class="tt-verdict ${verdictClass}">${verdict}</span>
         </div>
-        <div class="tt-models">`;
-
-      ['GFS', 'EC'].forEach(m => {
-        const r = models[m];
-        if (!r) {
-          html += `<div class="tt-model"><div class="tt-model-name">${m}<span class="tt-label-text">暂无数据</span></div></div>`;
-          return;
-        }
-
-        const q = r.quality;
-        const a = r.aod;
-
-        // 鲜艳度：越高越好
-        const qPct = q != null ? Math.min(q / 2.5 * 100, 100) : 0;
-        const qLabel = qualityLabel(q);
-        let qGaugeClass = 'tt-gauge-quality-low';
-        if (q != null && q >= 0.8) qGaugeClass = 'tt-gauge-quality-high';
-        else if (q != null && q >= 0.2) qGaugeClass = 'tt-gauge-quality-mid';
-
-        // 通透度：气溶胶越低越好，反转展示
-        const clarity = a != null ? Math.max(0, 1 - a / 1.0) : null;
-        const cPct = clarity != null ? Math.min(clarity * 100, 100) : 0;
-        const cLabel = clarityLabel(clarity);
-        let cGaugeClass = 'tt-gauge-clarity-low';
-        if (clarity != null && clarity >= 0.6) cGaugeClass = 'tt-gauge-clarity-high';
-        else if (clarity != null && clarity >= 0.4) cGaugeClass = 'tt-gauge-clarity-mid';
-
-        html += `<div class="tt-model">
-          <div class="tt-model-name">${m}</div>
-          <div class="tt-gauge ${qGaugeClass}">
-            <div class="tt-gauge-fill g-right" style="width:${q != null ? Math.max(qPct, 8) : 0}%">
-              ${q != null ? `<span>${q.toFixed(2)}</span>` : ''}
-            </div>
+        <div class="tt-gauge ${qGaugeClass}">
+          <div class="tt-gauge-fill g-right" style="width:${bestQ != null ? Math.max(qPct, 8) : 0}%">
+            ${bestQ != null ? `<span>${bestQ.toFixed(2)}</span>` : ''}
           </div>
-          <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 6px;display:flex;justify-content:space-between">
-            <span>鲜艳度 · ${qLabel}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 6px;display:flex;justify-content:space-between">
+          <span>鲜艳度 · ${qualityLabel(bestQ)}</span>
+          <span style="opacity:.7">${modelTexts || '暂无数据'}</span>
+        </div>
+        <div class="tt-gauge ${cGaugeClass}">
+          <div class="tt-gauge-fill g-right" style="width:${clarity != null ? Math.max(cPct, 8) : 0}%">
+            ${clarity != null ? `<span>${bestA.toFixed(2)}</span>` : ''}
           </div>
-          <div class="tt-gauge ${cGaugeClass}">
-            <div class="tt-gauge-fill g-right" style="width:${clarity != null ? Math.max(cPct, 8) : 0}%">
-              ${clarity != null ? `<span>${a.toFixed(2)}</span>` : ''}
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 0;display:flex;justify-content:space-between">
-            <span>通透度 · ${cLabel}</span>
-          </div>
-        </div>`;
-      });
-
-      html += '</div></div>';
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin:2px 0 0;display:flex;justify-content:space-between">
+          <span>通透度 · ${clarityLabel(clarity)}</span>
+        </div>
+      </div>`;
     });
-
-    // Summary
-    const allQualities = [];
-    ['morning', 'evening'].forEach(eType => {
-      const models = evts[eType];
-      if (!models) return;
-      Object.values(models).forEach(r => {
-        if (r.quality != null) allQualities.push(r.quality);
-      });
-    });
-    if (allQualities.length > 0) {
-      const maxQ = Math.max(...allQualities);
-      let summaryClass = 'bad', summaryText = '';
-      if (maxQ >= 0.8) { summaryClass = 'good'; summaryText = `${label}有大烧潜力，值得期待！`; }
-      else if (maxQ >= 0.4) { summaryClass = 'mid'; summaryText = `${label}表现尚可，值得关注`; }
-      else { summaryText = `${label}霞光一般`; }
-      html += `<div class="tt-summary ${summaryClass}">${summaryText}</div>`;
-    }
 
     html += '</div>';
   });
