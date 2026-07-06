@@ -94,9 +94,17 @@ func StartWebServer(port string, store *Store, logger *log.Logger) {
 		if r.Method != http.MethodGet {
 			return
 		}
+		// 用 HTML 文件的修改时间作为版本号，HTML 一改版本自动变
+		swVersion := "v1"
+		for _, p := range []string{"templates/index.html", "index.html"} {
+			if info, err := os.Stat(p); err == nil {
+				swVersion = fmt.Sprintf("v%d", info.ModTime().Unix())
+				break
+			}
+		}
 		w.Header().Set("Content-Type", "application/javascript")
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Write([]byte(`const CACHE_VERSION = 'v5';
+		fmt.Fprintf(w, `const CACHE_VERSION = '%s';
 const STATIC_CACHE = 'liuxia-static-' + CACHE_VERSION;
 const DATA_CACHE = 'liuxia-data-' + CACHE_VERSION;
 const STATIC_ASSETS = ['/', '/manifest.json', '/static/icons/icon-180x180.png', '/static/icons/icon-192x192.png', '/static/icons/icon-512x512.png', '/offline.html'];
@@ -179,7 +187,7 @@ async function syncPendingData() {
   for (const req of keys) {
     try { await fetch(req); } catch (_) {}
   }
-}`))
+}`, swVersion)
 	})
 
 	mux.HandleFunc("/offline.html", func(w http.ResponseWriter, r *http.Request) {

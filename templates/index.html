@@ -89,6 +89,9 @@
   .tt-summary.mid { background: rgba(243,156,18,.1); color: #e67e22; }
   .tt-summary.bad { background: rgba(189,195,199,.15); color: #7f8c8d; }
   .no-data { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px; }
+  #updateBanner { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #e67e22; color: #fff; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 2000; cursor: pointer; transition: opacity .3s, transform .3s; }
+  #updateBanner:hover { background: #d35400; }
+  #updateBanner.show { display: flex; align-items: center; gap: 8px; }
   .chart-box { background: var(--card-bg); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: background 0.3s; }
   .chart-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; user-select: none; }
   .chart-header h2 { font-size: 16px; color: var(--text-secondary); margin: 0; }
@@ -305,6 +308,11 @@
       <button class="btn-confirm" onclick="confirmDate()">确定</button>
     </div>
   </div>
+</div>
+
+<div id="updateBanner" onclick="applyUpdate()">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+  点击更新到最新版本
 </div>
 
 <script>
@@ -1083,20 +1091,18 @@ if ('serviceWorker' in navigator) {
       const newWorker = reg.installing;
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-          newWorker.postMessage({ type: 'SKIP_WAITING' });
-          if (confirm('流霞已更新，是否刷新？')) location.reload();
+          document.getElementById('updateBanner').classList.add('show');
         }
       });
     });
   }).catch(() => {});
+}
 
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      location.reload();
-    }
-  });
+function applyUpdate() {
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+  }
+  location.reload();
 }
 </script>
 </body>
