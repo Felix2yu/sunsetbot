@@ -656,7 +656,7 @@ function renderCards() {
         const qBadge = r.quality != null
           ? `<span class="quality-badge ${r.quality < 0.2 ? 'q-low' : r.quality < 0.8 ? 'q-mid' : 'q-high'}">${r.quality.toFixed(4)}</span>`
           : '-';
-        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qualityLabel(r.quality)}</span><span class="metric">气溶胶 <span class="aod-badge ${r.aod < 0.2 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod != null ? r.aod.toFixed(4) : '-'}</span> ${aodLabel(r.aod)}</span></div>`;
+        html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qualityLabel(r.quality)}</span><span class="metric">气溶胶 <span class="aod-badge ${r.aod < 0.3 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod != null ? r.aod.toFixed(4) : '-'}</span> ${aodLabel(r.aod)}</span></div>`;
       });
       html += `</div></div>`;
     });
@@ -726,7 +726,7 @@ function renderTable() {
           : '-';
         const qLabel = qualityLabel(r.quality);
         const aodBadge = r.aod != null
-          ? `<span class="aod-badge ${r.aod < 0.2 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod.toFixed(4)}</span>`
+          ? `<span class="aod-badge ${r.aod < 0.3 ? 'aod-low' : r.aod < 0.6 ? 'aod-mid' : 'aod-high'}">${r.aod.toFixed(4)}</span>`
           : '-';
         const aodLbl = aodLabel(r.aod);
         html += `<div class="model-cell"><span class="model-name">${m}</span><span class="metric">鲜艳度 ${qBadge} ${qLabel}</span><span class="metric">气溶胶 ${aodBadge} ${aodLbl}</span></div>`;
@@ -903,8 +903,7 @@ function aodLabel(v) {
 
 function clarityLabel(c) {
   if (c == null) return '-';
-  if (c >= 0.9) return '极致通透';
-  if (c >= 0.8) return '非常通透';
+  if (c >= 0.8) return '极致通透';
   if (c >= 0.7) return '通透';
   if (c >= 0.6) return '较通透';
   if (c >= 0.4) return '一般';
