@@ -429,6 +429,40 @@ async function syncPendingData() {
 		json.NewEncoder(w).Encode(comparison)
 	})
 
+	mux.HandleFunc("/api/today", func(w http.ResponseWriter, r *http.Request) {
+		methodNotAllowed(w, r)
+		if r.Method != http.MethodGet {
+			return
+		}
+		atomic.AddInt64(&httpRequestsTotal, 1)
+		city := r.URL.Query().Get("city")
+
+		cacheKey := fmt.Sprintf("today:%s", city)
+		if cached, ok := cache.Get(cacheKey); ok {
+			atomic.AddInt64(&cacheHits, 1)
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache", "HIT")
+			json.NewEncoder(w).Encode(cached)
+			return
+		}
+		atomic.AddInt64(&cacheMisses, 1)
+
+		records, err := store.GetTodayTomorrowData(city)
+		if err != nil {
+			atomic.AddInt64(&httpRequestErrors, 1)
+			logger.Printf("[Web] GetTodayTomorrowData error: %v", err)
+			http.Error(w, "internal server error", 500)
+			return
+		}
+		if records == nil {
+			records = []SunsetRecord{}
+		}
+		cache.Set(cacheKey, records)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache", "MISS")
+		json.NewEncoder(w).Encode(records)
+	})
+
 	mux.HandleFunc("/api/rankings", func(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w, r)
 		if r.Method != http.MethodGet {

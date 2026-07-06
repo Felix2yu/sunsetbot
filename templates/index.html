@@ -52,6 +52,28 @@
   .controls button.secondary { background: var(--card-bg); color: #e67e22; border: 1px solid #e67e22; }
   .controls button.secondary:hover { background: var(--hover-bg); }
   .controls button.secondary.active { background: #e67e22; color: #fff; }
+  .today-tomorrow { background: var(--card-bg); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: background 0.3s; overflow: hidden; }
+  .today-tomorrow-header { background: #e67e22; color: #fff; padding: 12px 20px; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .today-tomorrow-body { padding: 16px 20px; }
+  .day-section { margin-bottom: 16px; }
+  .day-section:last-child { margin-bottom: 0; }
+  .day-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .day-title .date { color: var(--text-color); }
+  .event-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .event-card { background: var(--bg-color); border-radius: 6px; padding: 12px; border-left: 4px solid #e67e22; }
+  .event-card.morning { border-left-color: #f39c12; }
+  .event-card.evening { border-left-color: #3498db; }
+  .event-card .event-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .event-card .event-name .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+  .event-card .event-name .tag-morning { background: #ffeaa7; color: #d35400; }
+  .event-card .event-name .tag-evening { background: #dfe6e9; color: #2d3436; }
+  .event-card .model-info { margin-top: 8px; }
+  .event-card .model-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; }
+  .event-card .model-name { font-weight: 600; color: var(--text-secondary); }
+  .event-card .metric-value { display: flex; align-items: center; gap: 4px; }
+  .event-card .quality-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .event-card .aod-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #dfe6e9; color: #636e72; }
+  .no-data { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px; }
   .chart-box { background: var(--card-bg); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: background 0.3s; }
   .chart-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; user-select: none; }
   .chart-header h2 { font-size: 16px; color: var(--text-secondary); margin: 0; }
@@ -154,6 +176,16 @@
     <button onclick="loadData()">查询</button>
     <button onclick="exportData('csv')">导出 CSV</button>
     <button onclick="exportData('json')">导出 JSON</button>
+  </div>
+
+  <div class="today-tomorrow" id="todayTomorrow">
+    <div class="today-tomorrow-header">
+      <span>今日明日预报</span>
+      <span id="todayTomorrowDate"></span>
+    </div>
+    <div class="today-tomorrow-body" id="todayTomorrowBody">
+      <div class="loading">加载中...</div>
+    </div>
   </div>
 
   <div class="chart-box" data-chart="quality">
@@ -264,6 +296,94 @@ let qualityChart, aodChart, modelCompareChart, monthlyChart, cityCompareChart, b
 let allRecords = [];
 let currentPage = 1;
 const pageSize = 20;
+
+async function loadTodayTomorrow() {
+  const city = document.getElementById('city').value;
+  const params = new URLSearchParams();
+  if (city) params.set('city', city);
+
+  try {
+    const res = await fetch('/api/today?' + params.toString());
+    const records = await res.json();
+    renderTodayTomorrow(records);
+  } catch (err) {
+    document.getElementById('todayTomorrowBody').innerHTML = '<div class="no-data">加载失败</div>';
+  }
+}
+
+function renderTodayTomorrow(records) {
+  const body = document.getElementById('todayTomorrowBody');
+  const dateEl = document.getElementById('todayTomorrowDate');
+
+  if (!records || records.length === 0) {
+    body.innerHTML = '<div class="no-data">暂无今日明日数据</div>';
+    dateEl.textContent = '';
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  dateEl.textContent = `${today} ~ ${tomorrow}`;
+
+  const grouped = {};
+  records.forEach(r => {
+    if (!grouped[r.date]) grouped[r.date] = {};
+    if (!grouped[r.date][r.event_type]) grouped[r.date][r.event_type] = {};
+    grouped[r.date][r.event_type][r.model] = r;
+  });
+
+  let html = '';
+  const dates = [today, tomorrow];
+  dates.forEach(date => {
+    const evts = grouped[date];
+    if (!evts) {
+      html += `<div class="day-section">
+        <div class="day-title"><span class="date">${date}</span> <span class="tag tag-morning">无数据</span></div>
+      </div>`;
+      return;
+    }
+
+    html += `<div class="day-section"><div class="day-title"><span class="date">${date}</span></div><div class="event-cards">`;
+
+    ['morning', 'evening'].forEach(eType => {
+      const models = evts[eType];
+      if (!models) return;
+
+      const tagClass = eType === 'morning' ? 'tag-morning' : 'tag-evening';
+      const typeName = eType === 'morning' ? '朝霞' : '晚霞';
+
+      html += `<div class="event-card ${eType}">
+        <div class="event-name"><span class="tag ${tagClass}">${typeName}</span></div>
+        <div class="model-info">`;
+
+      ['GFS', 'EC'].forEach(m => {
+        const r = models[m];
+        if (!r) {
+          html += `<div class="model-row"><span class="model-name">${m}</span><span class="metric-value">-</span></div>`;
+          return;
+        }
+
+        const qualityText = r.quality != null ? r.quality.toFixed(4) : '-';
+        const aodText = r.aod != null ? r.aod.toFixed(4) : '-';
+        const qualityClass = r.quality == null ? 'q-low' : r.quality < 0.2 ? 'q-low' : r.quality < 0.8 ? 'q-mid' : 'q-high';
+
+        html += `<div class="model-row">
+          <span class="model-name">${m}</span>
+          <span class="metric-value">
+            <span class="quality-badge ${qualityClass}">${qualityText}</span>
+            <span class="aod-badge">${aodText}</span>
+          </span>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  body.innerHTML = html;
+}
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -407,6 +527,7 @@ async function loadData() {
     renderCards();
     renderCharts(allRecords);
     loadStatistics();
+    loadTodayTomorrow();
   } finally {
     loading.style.display = 'none';
   }
@@ -874,6 +995,7 @@ initTheme();
 restoreChartStates();
 loadCities();
 loadData();
+loadTodayTomorrow();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').then(reg => {

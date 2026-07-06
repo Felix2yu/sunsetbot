@@ -420,6 +420,39 @@ type Rankings struct {
 	Seasonal   []SeasonRanking `json:"seasonal"`
 }
 
+func (s *Store) GetTodayTomorrowData(city string) ([]SunsetRecord, error) {
+	today := time.Now().Format("2006-01-02")
+	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+
+	query := `SELECT id, city, date, time, event_type, model, quality, aod, created_at, updated_at
+		FROM sunset_data WHERE date IN (?, ?)`
+	args := []interface{}{today, tomorrow}
+
+	if city != "" {
+		query += ` AND city = ?`
+		args = append(args, city)
+	}
+
+	query += ` ORDER BY date ASC, CASE event_type WHEN 'morning' THEN 0 ELSE 1 END ASC, model ASC`
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []SunsetRecord
+	for rows.Next() {
+		var r SunsetRecord
+		if err := rows.Scan(&r.ID, &r.City, &r.Date, &r.Time, &r.EventType, &r.Model,
+			&r.Quality, &r.AOD, &r.CreatedAt, &r.UpdatedAt); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
 func (s *Store) GetRankings(city, eventType string, limit int) (*Rankings, error) {
 	rankings := &Rankings{}
 
