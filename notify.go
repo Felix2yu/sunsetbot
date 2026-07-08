@@ -170,13 +170,11 @@ func (n *NtfyNotifier) Send(title, body string, priority int, tags []string, mar
 		return fmt.Errorf("未设置 ntfy_topic")
 	}
 
-	// 构建 ntfy URL
+	// 构建 ntfy shoutrrr URL 格式: ntfy://server/topic
 	server := strings.TrimRight(n.Server, "/")
-	pushURL := fmt.Sprintf("%s/%s", server, n.Topic)
-	if n.Token != "" {
-		// 如果有 token，使用 token 格式
-		pushURL = fmt.Sprintf("%s?auth=%s", pushURL, n.Token)
-	}
+	server = strings.TrimPrefix(server, "https://")
+	server = strings.TrimPrefix(server, "http://")
+	pushURL := fmt.Sprintf("ntfy://%s/%s", server, n.Topic)
 
 	sender, err := shoutrrr.CreateSender(pushURL)
 	if err != nil {
