@@ -1108,6 +1108,14 @@ loadCities();
 loadData();
 loadTodayTomorrow();
 
+// 当页面重新获得焦点时，自动刷新数据（解决PWA后台不更新的问题）
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    loadData();
+    loadTodayTomorrow();
+  }
+});
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').then(reg => {
     reg.addEventListener('updatefound', () => {

@@ -133,13 +133,13 @@ self.addEventListener('message', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/api/')) {
+    // API请求：网络优先，缓存回退（保证实时更新 + 离线可用）
     e.respondWith(
-      caches.open(DATA_CACHE).then(cache =>
-        fetch(e.request).then(res => {
-          cache.put(e.request, res.clone());
-          return res;
-        }).catch(() => cache.match(e.request))
-      )
+      fetch(e.request).then(res => {
+        const clone = res.clone();
+        caches.open(DATA_CACHE).then(c => c.put(e.request, clone));
+        return res;
+      }).catch(() => caches.match(e.request))
     );
   } else if (url.hostname === 'cdn.jsdelivr.net') {
     e.respondWith(
