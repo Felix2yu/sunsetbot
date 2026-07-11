@@ -166,6 +166,7 @@
     #cardList { display: block; }
     .table-wrap { display: none; }
     .tt-days { grid-template-columns: 1fr; }
+    .chart-box[data-chart="bestDates"] .chart-body { min-height: 260px; }
   }
   @media (min-width: 769px) {
     .table-wrap { display: block; }
@@ -831,7 +832,16 @@ function renderBestDates(dates) {
   if (!dates || dates.length === 0) return;
   if (bestDatesChart) bestDatesChart.destroy();
 
-  const labels = dates.map(d => d.date + ' ' + (d.time || '') + ' ' + typeMap[d.event_type] + ' ' + d.model);
+  const isMobile = window.innerWidth <= 768;
+  const labels = dates.map(d => {
+    const shortDate = d.date.slice(5);
+    const typeName = typeMap[d.event_type];
+    if (isMobile) {
+      const shortModel = d.model === 'GFS' ? 'G' : d.model === 'EC' ? 'E' : d.model;
+      return shortDate + ' ' + typeName + ' ' + shortModel;
+    }
+    return d.date + ' ' + typeName + ' ' + d.model;
+  });
   const qualityData = dates.map(d => d.quality != null ? parseFloat(d.quality.toFixed(4)) : 0);
   const aodData = dates.map(d => d.aod != null ? parseFloat((Math.max(0, 1 - d.aod)).toFixed(4)) : 0);
 
@@ -847,6 +857,7 @@ function renderBestDates(dates) {
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'top' } },
       scales: { x: { beginAtZero: true } },
     },
