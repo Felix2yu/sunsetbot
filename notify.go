@@ -114,8 +114,9 @@ func (s *ShoutrrrNotifier) Send(title, body string, priority int, tags []string,
 			s.logSuccess(priority)
 			return nil
 		}
-		// 如果因为参数不支持而失败，降级为不带 markdown 重试
+		// 如果因为参数不支持而失败，降级为纯文本（清除 markdown 符号）重试
 		s.logger.Printf("[推送降级] 目标不支持 markdown 参数，降级为纯文本推送")
+		message = stripMarkdown(message)
 	}
 
 	// 不带 markdown 发送
