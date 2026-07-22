@@ -127,6 +127,11 @@ func (wp *WeatherPredictor) parseWeatherData(content string) *WeatherData {
 		timeStr = eventTime[11:]
 	}
 
+	if !isReasonableDate(dateStr) {
+		wp.logger.Printf("[过滤] 日期 %q 不合理，跳过存储", dateStr)
+		return nil
+	}
+
 	var pushStr strings.Builder
 	if qualityNum == nil {
 		pushStr.WriteString(fmt.Sprintf("鲜艳度：%s（数据异常）\n", qualityStr))
@@ -405,4 +410,17 @@ func derefFloat(f *float64) float64 {
 
 func floatPtr(f float64) *float64 {
 	return &f
+}
+
+var minValidDate = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+
+func isReasonableDate(dateStr string) bool {
+	if dateStr == "" {
+		return false
+	}
+	d, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return false
+	}
+	return !d.Before(minValidDate)
 }

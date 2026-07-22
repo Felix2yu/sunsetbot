@@ -100,7 +100,7 @@ func (s *Store) UpsertRecord(r SunsetRecord) error {
 
 func (s *Store) QueryRecords(city, eventType, startDate, endDate string) ([]SunsetRecord, error) {
 	query := `SELECT id, city, date, time, event_type, model, quality, aod, created_at, updated_at
-		FROM sunset_data WHERE 1=1`
+		FROM sunset_data WHERE date >= '2020-01-01'`
 	args := []interface{}{}
 
 	if city != "" {
@@ -205,7 +205,7 @@ type Statistics struct {
 func (s *Store) GetStatistics(city, eventType, startDate, endDate string) (*Statistics, error) {
 	stats := &Statistics{}
 
-	countQuery := `SELECT COUNT(*) FROM sunset_data WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM sunset_data WHERE date >= '2020-01-01'`
 	args := []interface{}{}
 
 	if city != "" {
@@ -232,7 +232,7 @@ func (s *Store) GetStatistics(city, eventType, startDate, endDate string) (*Stat
 	modelQuery := `SELECT model, event_type, COUNT(*),
 		MIN(quality), MAX(quality), AVG(quality),
 		MIN(aod), MAX(aod), AVG(aod)
-		FROM sunset_data WHERE 1=1`
+		FROM sunset_data WHERE date >= '2020-01-01'`
 
 	modelArgs := []interface{}{}
 
@@ -271,7 +271,7 @@ func (s *Store) GetStatistics(city, eventType, startDate, endDate string) (*Stat
 	}
 
 	monthlyQuery := `SELECT substr(date, 1, 7) as month, COUNT(*), AVG(quality), AVG(aod)
-		FROM sunset_data WHERE 1=1`
+		FROM sunset_data WHERE date >= '2020-01-01'`
 
 	monthlyArgs := []interface{}{}
 
@@ -311,7 +311,7 @@ func (s *Store) GetStatistics(city, eventType, startDate, endDate string) (*Stat
 }
 
 func (s *Store) GetCities() ([]string, error) {
-	rows, err := s.db.Query(`SELECT DISTINCT city FROM sunset_data WHERE city != '' ORDER BY city`)
+	rows, err := s.db.Query(`SELECT DISTINCT city FROM sunset_data WHERE city != '' AND date >= '2020-01-01' ORDER BY city`)
 	if err != nil {
 		return nil, err
 	}
@@ -336,12 +336,21 @@ func (s *Store) GetTotalRecords() (int, error) {
 
 func (s *Store) DeleteOldRecords(daysToKeep int) (int64, error) {
 	result, err := s.db.Exec(`
-		DELETE FROM sunset_data 
+		DELETE FROM sunset_data
 		WHERE date < date('now', '-' || ? || ' days')`,
 		daysToKeep)
 	if err != nil {
 		return 0, err
 	}
+	return result.RowsAffected()
+}
+
+func (s *Store) DeleteAbnormalDates() (int64, error) {
+	result, err := s.db.Exec(`DELETE FROM sunset_data WHERE date < '2020-01-01'`)
+	if err != nil {
+		return 0, err
+	}
+	s.Cache.Clear()
 	return result.RowsAffected()
 }
 
@@ -354,7 +363,7 @@ type CityComparison struct {
 
 func (s *Store) GetCityComparison(eventType, startDate, endDate string) ([]CityComparison, error) {
 	query := `SELECT city, AVG(quality), AVG(aod), COUNT(*)
-		FROM sunset_data WHERE city != ''`
+		FROM sunset_data WHERE city != '' AND date >= '2020-01-01'`
 
 	args := []interface{}{}
 
@@ -457,7 +466,7 @@ func (s *Store) GetRankings(city, eventType string, limit int) (*Rankings, error
 	rankings := &Rankings{}
 
 	dateQuery := `SELECT city, date, time, event_type, model, quality, aod
-		FROM sunset_data WHERE quality IS NOT NULL`
+		FROM sunset_data WHERE quality IS NOT NULL AND date >= '2020-01-01'`
 	args := []interface{}{}
 	if city != "" {
 		dateQuery += ` AND city = ?`
@@ -487,7 +496,7 @@ func (s *Store) GetRankings(city, eventType string, limit int) (*Rankings, error
 	}
 
 	monthQuery := `SELECT substr(date, 1, 7) as month, AVG(quality), AVG(aod), COUNT(*)
-		FROM sunset_data WHERE quality IS NOT NULL`
+		FROM sunset_data WHERE quality IS NOT NULL AND date >= '2020-01-01'`
 	mArgs := []interface{}{}
 	if city != "" {
 		monthQuery += ` AND city = ?`
@@ -523,7 +532,7 @@ func (s *Store) GetRankings(city, eventType string, limit int) (*Rankings, error
 			ELSE '冬季'
 		END as season,
 		AVG(quality), AVG(aod), COUNT(*)
-		FROM sunset_data WHERE quality IS NOT NULL`
+		FROM sunset_data WHERE quality IS NOT NULL AND date >= '2020-01-01'`
 	sArgs := []interface{}{}
 	if city != "" {
 		seasonQuery += ` AND city = ?`

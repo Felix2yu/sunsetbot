@@ -28,6 +28,13 @@ func main() {
 	defer store.Close()
 	logger.Printf("[启动] 数据库已初始化: %s", dbPath)
 
+	// 清理异常日期数据（早于 2020-01-01 的记录）
+	if deleted, err := store.DeleteAbnormalDates(); err != nil {
+		logger.Printf("[清理] 异常日期数据清理失败: %v", err)
+	} else if deleted > 0 {
+		logger.Printf("[清理] 已清理 %d 条异常日期数据（早于 2020-01-01）", deleted)
+	}
+
 	predictor := NewWeatherPredictor(cfg, logger, store)
 
 	c := cron.New(
