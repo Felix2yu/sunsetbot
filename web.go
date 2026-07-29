@@ -445,7 +445,10 @@ async function syncPendingData() {
 		atomic.AddInt64(&httpRequestsTotal, 1)
 		city := r.URL.Query().Get("city")
 
-		cacheKey := fmt.Sprintf("today:%s", city)
+		todayDate := time.Now().Format("2006-01-02")
+		tomorrowDate := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+
+		cacheKey := fmt.Sprintf("today:%s:%s", city, todayDate)
 		if cached, ok := cache.Get(cacheKey); ok {
 			atomic.AddInt64(&cacheHits, 1)
 			w.Header().Set("Content-Type", "application/json")
@@ -465,10 +468,19 @@ async function syncPendingData() {
 		if records == nil {
 			records = []SunsetRecord{}
 		}
-		cache.Set(cacheKey, records)
+		resp := struct {
+			Today    string         `json:"today"`
+			Tomorrow string         `json:"tomorrow"`
+			Data     []SunsetRecord `json:"data"`
+		}{
+			Today:    todayDate,
+			Tomorrow: tomorrowDate,
+			Data:     records,
+		}
+		cache.Set(cacheKey, resp)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache", "MISS")
-		json.NewEncoder(w).Encode(records)
+		json.NewEncoder(w).Encode(resp)
 	})
 
 	mux.HandleFunc("/api/rankings", func(w http.ResponseWriter, r *http.Request) {

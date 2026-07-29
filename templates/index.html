@@ -156,10 +156,19 @@
   .aod-low { background: #3498db; color: #fff; }
   .aod-mid { background: #dfe6e9; color: #636e72; }
   .aod-high { background: #636e72; color: #fff; }
+  .controls-toggle { display: none; }
+  .controls-wrap { position: relative; }
+  .controls-toggle-btn { display: none; align-items: center; justify-content: space-between; width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; margin-bottom: 12px; }
+  .controls-toggle-btn:hover { background: var(--hover-bg); }
+  .controls-toggle-btn .arrow { transition: transform 0.25s ease; font-size: 12px; }
+  .controls-toggle-btn.open .arrow { transform: rotate(180deg); }
+
   @media (max-width: 768px) {
     .container { padding: 10px; }
     .header h1 { font-size: 20px; }
-    .controls { gap: 8px; }
+    .controls-toggle-btn { display: flex; }
+    .controls { gap: 8px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease; max-height: 0; opacity: 0; margin: 0; padding: 0 1px; }
+    .controls.open { max-height: 600px; opacity: 1; margin-bottom: 12px; }
     .controls select { min-width: 0; flex: 1 1 0; }
     .quick-range { width: 100%; justify-content: flex-start; }
     .quick-range button { flex: 0 0 auto; font-size: 13px; padding: 5px 10px; }
@@ -179,26 +188,32 @@
     <h1>流霞</h1>
   </div>
 
-  <div class="controls">
-    <select id="city">
-      <option value="">全部城市</option>
-    </select>
-    <select id="eventType" onchange="loadData()">
-      <option value="">全部</option>
-      <option value="morning">朝霞</option>
-      <option value="evening">晚霞</option>
-    </select>
-    <div class="quick-range">
-      <button class="secondary" onclick="quickRange(30, this)">近1月</button>
-      <button class="secondary" onclick="quickRange(90, this)">近3月</button>
-      <button class="secondary" onclick="quickRange(180, this)">近半年</button>
-      <button class="secondary" onclick="quickRange(365, this)">近1年</button>
-      <button class="secondary" onclick="quickRange(0, this)">全部</button>
+  <div class="controls-wrap">
+    <button class="controls-toggle-btn" id="controlsToggle" onclick="toggleControls()">
+      <span>筛选与导出</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="controls" id="controlsBody">
+      <select id="city">
+        <option value="">全部城市</option>
+      </select>
+      <select id="eventType" onchange="loadData()">
+        <option value="">全部</option>
+        <option value="morning">朝霞</option>
+        <option value="evening">晚霞</option>
+      </select>
+      <div class="quick-range">
+        <button class="secondary" onclick="quickRange(30, this)">近1月</button>
+        <button class="secondary" onclick="quickRange(90, this)">近3月</button>
+        <button class="secondary" onclick="quickRange(180, this)">近半年</button>
+        <button class="secondary" onclick="quickRange(365, this)">近1年</button>
+        <button class="secondary" onclick="quickRange(0, this)">全部</button>
+      </div>
+      <button class="secondary date-btn" onclick="openDateModal()" id="dateBtn">📅 自定义日期</button>
+      <button onclick="loadData()">查询</button>
+      <button onclick="exportData('csv')">导出 CSV</button>
+      <button onclick="exportData('json')">导出 JSON</button>
     </div>
-    <button class="secondary date-btn" onclick="openDateModal()" id="dateBtn">📅 自定义日期</button>
-    <button onclick="loadData()">查询</button>
-    <button onclick="exportData('csv')">导出 CSV</button>
-    <button onclick="exportData('json')">导出 JSON</button>
   </div>
 
   <div class="today-tomorrow" id="todayTomorrow">
@@ -332,14 +347,15 @@ async function loadTodayTomorrow() {
 
   try {
     const res = await fetch('/api/today?' + params.toString());
-    const records = await res.json();
-    renderTodayTomorrow(records);
+    const body = await res.json();
+    const records = body.data || body;
+    renderTodayTomorrow(records, body.today, body.tomorrow);
   } catch (err) {
     document.getElementById('todayTomorrowBody').innerHTML = '<div class="no-data">加载失败</div>';
   }
 }
 
-function renderTodayTomorrow(records) {
+function renderTodayTomorrow(records, today, tomorrow) {
   const body = document.getElementById('todayTomorrowBody');
   const dateEl = document.getElementById('todayTomorrowDate');
 
@@ -349,9 +365,13 @@ function renderTodayTomorrow(records) {
     return;
   }
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  if (!today) {
+    const now = new Date();
+    today = now.toISOString().slice(0, 10);
+  }
+  if (!tomorrow) {
+    tomorrow = new Date(new Date(today + 'T00:00:00').getTime() + 86400000).toISOString().slice(0, 10);
+  }
   dateEl.textContent = `${today} ~ ${tomorrow}`;
 
   const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
@@ -1080,6 +1100,13 @@ function renderMonthly(monthly) {
       },
     },
   });
+}
+
+function toggleControls() {
+  const body = document.getElementById('controlsBody');
+  const btn = document.getElementById('controlsToggle');
+  const isOpen = body.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
 }
 
 function exportData(format) {

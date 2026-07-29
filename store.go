@@ -335,10 +335,11 @@ func (s *Store) GetTotalRecords() (int, error) {
 }
 
 func (s *Store) DeleteOldRecords(daysToKeep int) (int64, error) {
+	cutoff := time.Now().AddDate(0, 0, -daysToKeep).Format("2006-01-02")
 	result, err := s.db.Exec(`
 		DELETE FROM sunset_data
-		WHERE date < date('now', '-' || ? || ' days')`,
-		daysToKeep)
+		WHERE date < ?`,
+		cutoff)
 	if err != nil {
 		return 0, err
 	}
