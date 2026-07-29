@@ -93,11 +93,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image tags
+        id: tags
+        run: |
+          IMAGE=ghcr.io/${{ steps.lowercase.outputs.image_name }}
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "tags=${IMAGE}:dev" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            echo "tags=${IMAGE}:${TAG},${IMAGE}:latest" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${IMAGE}:master,${IMAGE}:latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create and push multi-arch manifest
         run: |
           IMAGE=ghcr.io/${{ steps.lowercase.outputs.image_name }}
+          TAG_ARGS=""
+          IFS=',' read -ra TAGS <<< "${{ steps.tags.outputs.tags }}"
+          for TAG in "${TAGS[@]}"; do
+            TAG_ARGS="${TAG_ARGS} --tag ${TAG}"
+          done
           docker buildx imagetools create \
-            --tag ${IMAGE}:master \
-            --tag ${IMAGE}:latest \
+            ${TAG_ARGS} \
             ${IMAGE}:${{ github.run_id }}-amd64 \
             ${IMAGE}:${{ github.run_id }}-arm64
