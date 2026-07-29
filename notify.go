@@ -171,40 +171,11 @@ func (n *NtfyNotifier) Send(title, body string, priority int, tags []string, mar
 		return fmt.Errorf("未设置 ntfy_topic")
 	}
 
-	// 构建 ntfy shoutrrr URL 格式: ntfy://server/topic
 	server := strings.TrimRight(n.Server, "/")
 	server = strings.TrimPrefix(server, "https://")
 	server = strings.TrimPrefix(server, "http://")
 	pushURL := fmt.Sprintf("ntfy://%s/%s", server, n.Topic)
 
-	sender, err := shoutrrr.CreateSender(pushURL)
-	if err != nil {
-		return fmt.Errorf("创建通知器失败: %w", err)
-	}
-
-	message := fmt.Sprintf("%s\n\n%s", title, body)
-
-	params := &types.Params{
-		"title":    title,
-		"priority": fmt.Sprintf("%d", priority),
-	}
-	if len(tags) > 0 {
-		(*params)["tags"] = strings.Join(tags, ",")
-	}
-
-	errs := sender.Send(message, params)
-	if len(errs) > 0 {
-		var errMessages []string
-		for _, e := range errs {
-			if e != nil {
-				errMessages = append(errMessages, e.Error())
-			}
-		}
-		if len(errMessages) > 0 {
-			return fmt.Errorf("推送失败: %s", strings.Join(errMessages, "; "))
-		}
-	}
-
-	n.logger.Printf("[推送成功] ntfy 通知已发送到 %s, 优先级: %d", pushURL, priority)
-	return nil
+	notifier := &ShoutrrrNotifier{PushURL: pushURL, logger: n.logger}
+	return notifier.Send(title, body, priority, tags, markdown)
 }
