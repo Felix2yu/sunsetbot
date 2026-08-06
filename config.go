@@ -12,12 +12,9 @@ type RequestConfig struct {
 }
 
 type PushConfig struct {
-	Enable     bool
-	Markdown   bool
-	PushURL    string
-	NtfyServer string
-	NtfyTopic  string
-	NtfyToken  string
+	Enable   bool
+	Markdown bool
+	PushURL  string
 }
 
 type TaskConfig struct {
@@ -85,9 +82,6 @@ func LoadConfig() (*Config, error) {
 
 	cities := getEnvList("CITY", []string{city})
 
-	ntfyTopic := getEnv("NTFY_TOPIC", "")
-	pushURL := getEnv("PUSH_URL", "")
-
 	dataRetention := 365
 	if v := os.Getenv("DATA_RETENTION_DAYS"); v != "" {
 		if days, err := strconv.Atoi(v); err == nil {
@@ -100,12 +94,9 @@ func LoadConfig() (*Config, error) {
 			BaseURL: getEnv("BASE_URL", "https://sunsetbot.top/"),
 		},
 		Push: PushConfig{
-			Enable:     getEnvBool("PUSH_ENABLE", true),
-			Markdown:   getEnvBool("PUSH_MARKDOWN", true),
-			PushURL:    pushURL,
-			NtfyServer: getEnv("NTFY_SERVER", "https://ntfy.sh"),
-			NtfyTopic:  ntfyTopic,
-			NtfyToken:  getEnv("NTFY_TOKEN", ""),
+			Enable:   getEnvBool("PUSH_ENABLE", true),
+			Markdown: getEnvBool("PUSH_MARKDOWN", true),
+			PushURL:  getEnv("PUSH_URL", ""),
 		},
 		Schedule: ScheduleConfig{
 			City:            cities[0],
@@ -128,8 +119,8 @@ func LoadConfig() (*Config, error) {
 
 	// 推送配置验证
 	if cfg.Push.Enable {
-		if cfg.Push.PushURL == "" && cfg.Push.NtfyTopic == "" {
-			return nil, fmt.Errorf("推送已启用但未配置通知渠道：需设置 PUSH_URL 或 NTFY_TOPIC")
+		if cfg.Push.PushURL == "" {
+			return nil, fmt.Errorf("推送已启用但未配置通知渠道：需设置 PUSH_URL")
 		}
 	}
 

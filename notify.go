@@ -17,22 +17,13 @@ type Notifier interface {
 
 // NewNotifier 根据配置创建对应的 Notifier
 func NewNotifier(cfg *PushConfig, logger *log.Logger) Notifier {
-	if cfg.PushURL != "" {
-		return &ShoutrrrNotifier{
-			PushURL: cfg.PushURL,
-			logger:  logger,
-		}
+	if cfg.PushURL == "" {
+		return nil
 	}
-	// 向后兼容：使用 ntfy 直连
-	if cfg.NtfyTopic != "" {
-		return &NtfyNotifier{
-			Server: cfg.NtfyServer,
-			Topic:  cfg.NtfyTopic,
-			Token:  cfg.NtfyToken,
-			logger: logger,
-		}
+	return &ShoutrrrNotifier{
+		PushURL: cfg.PushURL,
+		logger:  logger,
 	}
-	return nil
 }
 
 // stripMarkdown 移除 Markdown 格式标记，返回纯文本
@@ -154,28 +145,4 @@ func (s *ShoutrrrNotifier) checkErrors(errs []error) error {
 
 func (s *ShoutrrrNotifier) logSuccess(priority int) {
 	s.logger.Printf("[推送成功] 通知已发送, 优先级: %d", priority)
-}
-
-// NtfyNotifier ntfy 直连通知实现（向后兼容）
-type NtfyNotifier struct {
-	Server string
-	Topic  string
-	Token  string
-	logger *log.Logger
-}
-
-func (n *NtfyNotifier) Name() string { return "ntfy" }
-
-func (n *NtfyNotifier) Send(title, body string, priority int, tags []string, markdown bool) error {
-	if n.Topic == "" {
-		return fmt.Errorf("未设置 ntfy_topic")
-	}
-
-	server := strings.TrimRight(n.Server, "/")
-	server = strings.TrimPrefix(server, "https://")
-	server = strings.TrimPrefix(server, "http://")
-	pushURL := fmt.Sprintf("ntfy://%s/%s", server, n.Topic)
-
-	notifier := &ShoutrrrNotifier{PushURL: pushURL, logger: n.logger}
-	return notifier.Send(title, body, priority, tags, markdown)
 }

@@ -2,14 +2,14 @@
 
 > 流霞，天边流动的彩霞。古人以"流霞"喻仙酒、喻美景，今以此名，捕捉朝暮之间那一抹转瞬即逝的绚烂。
 
-流霞是一款朝霞晚霞预报与监控工具。它基于 GFS/EC 气象模型数据，每日定时获取朝霞/晚霞的鲜艳度与气溶胶预报，通过 [shoutrrr](https://github.com/containrrr/shoutrrr) 或 ntfy 推送提醒，并提供 Web 数据看板用于历史数据的可视化分析。
+流霞是一款朝霞晚霞预报与监控工具。它基于 GFS/EC 气象模型数据，每日定时获取朝霞/晚霞的鲜艳度与气溶胶预报，通过 [shoutrrr](https://github.com/containrrr/shoutrrr) 推送提醒，并提供 Web 数据看板用于历史数据的可视化分析。
 
 由 sunsetbot.top 提供接口。Docker 镜像支持 `linux/amd64` 和 `linux/arm64` 架构。
 
 ## 功能特性
 
 - **定时预报** — 基于 GFS/EC 模型，按配置时间自动获取朝霞/晚霞预报
-- **智能推送** — 通过 shoutrrr/ntfy 推送通知，按预报质量分 5 个等级，支持 Markdown 格式开关
+- **智能推送** — 通过 shoutrrr 推送通知，按预报质量分 5 个等级，支持 Markdown 格式开关
 - **数据看板** — 内置 Web 页面，支持折线图、模型对比、月度趋势、城市对比等可视化
 - **最佳观赏排行** — 按历史数据排行 Top 10 高质量日期，季节对比分析
 - **多城市监控** — 支持同时监控多个城市的朝霞/晚霞数据
@@ -34,12 +34,7 @@ services:
       - BASE_URL=https://sunsetbot.top/
       - PUSH_ENABLE=true
       - PUSH_MARKDOWN=true
-      # 方式一：使用 shoutrrr URL（推荐，支持多渠道）
       - PUSH_URL=ntfy://ntfy.sh/Weather,tgram://bot-token/chatid
-      # 方式二：直接使用 ntfy（向后兼容）
-      # - NTFY_SERVER=https://ntfy.sh
-      # - NTFY_TOPIC=Weather
-      # - NTFY_TOKEN=
       - SEND_TEST_ON_START=false
       - PUSH_ERROR=true
       - MORNING_ENABLE=true
@@ -65,13 +60,10 @@ services:
 | `PUSH_ENABLE` | 否 | `true` | 是否启用推送 |
 | `PUSH_MARKDOWN` | 否 | `true` | 是否使用 Markdown 格式推送 |
 | `PUSH_URL` | 否* | — | shoutrrr URL，支持多渠道逗号分隔（如 `ntfy://ntfy.sh/Weather,tgram://bot-token/chatid`） |
-| `NTFY_TOPIC` | 否* | — | ntfy 主题（直接使用 ntfy 时必填） |
-| `NTFY_SERVER` | 否 | `https://ntfy.sh` | ntfy 服务器地址 |
-| `NTFY_TOKEN` | 否 | — | ntfy 认证 token |
 | `SEND_TEST_ON_START` | 否 | `false` | 启动时推送测试消息 |
 | `PUSH_ERROR` | 否 | `true` | 请求错误时推送 |
 
-> *启用推送时，需配置 `PUSH_URL` 或 `NTFY_TOPIC` 其中之一。两者都配置时优先使用 PUSH_URL。
+> *启用推送时，需配置 `PUSH_URL`。
 
 ### 基础配置
 
@@ -99,11 +91,7 @@ services:
 
 ## 消息推送
 
-支持两种推送方式：shoutrrr（推荐）和 ntfy 直连。
-
-### 方式一：shoutrrr（推荐）
-
-使用 [shoutrrr](https://github.com/containrrr/shoutrrr) Go 原生通知库，支持 30+ 通知渠道，无需额外部署。
+使用 [shoutrrr](https://github.com/containrrr/shoutrrr) Go 原生通知库，支持 30+ 通知渠道，无需额外部署，支持多渠道同时推送。
 
 **配置环境变量：**
 
@@ -130,18 +118,6 @@ PUSH_URL=ntfy://ntfy.sh/Weather,tgram://bot-token/chatid
 | Gotify | `gotify://gotify-server/token` |
 
 更多渠道请参考 [shoutrrr 文档](https://containrrr.dev/shoutrrr/)。
-
-### 方式二：ntfy 直连
-
-直接使用 ntfy 推送，无需额外配置。
-
-官方 ntfy 地址：<https://ntfy.sh/>
-
-```yaml
-NTFY_TOPIC=Weather
-NTFY_SERVER=https://ntfy.sh
-NTFY_TOKEN=                 # 可选
-```
 
 ### 通知等级
 

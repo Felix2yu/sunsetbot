@@ -296,8 +296,8 @@ func (wp *WeatherPredictor) sendNotification(title, content string, priority int
 		return
 	}
 
-	if wp.config.Push.PushURL == "" && wp.config.Push.NtfyTopic == "" {
-		wp.logger.Println("[推送失败] 未配置通知渠道 (需设置 PUSH_URL 或 NTFY_TOPIC)")
+	if wp.config.Push.PushURL == "" {
+		wp.logger.Println("[推送失败] 未配置通知渠道 (需设置 PUSH_URL)")
 		return
 	}
 
