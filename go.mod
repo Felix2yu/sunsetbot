@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/robfig/cron/v3 v3.0.1
-	modernc.org/sqlite v1.56.0
+	modernc.org/sqlite v1.57.0
 )
 
 require (
