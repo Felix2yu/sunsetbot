@@ -7,7 +7,7 @@ RUN apk add --no-cache tzdata ca-certificates gosu \
     && addgroup -g 1000 appuser \
     && adduser -D -u 1000 -G appuser appuser
 
-COPY bin/liuxia /app/liuxia
+COPY --chmod=755 bin/liuxia /app/liuxia
 COPY templates /app/templates
 COPY static /app/static
 COPY entrypoint.sh /app/entrypoint.sh
