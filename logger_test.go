@@ -237,3 +237,57 @@ func TestLoggerDefaultLevel(t *testing.T) {
 		t.Error("空 level 应该默认为 info 并记录日志")
 	}
 }
+
+func TestLoggerDebugf(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewLogger(&buf, "debug")
+	logger.Debugf("debug %s %d", "message", 42)
+
+	var entry LogEntry
+	if err := json.Unmarshal([]byte(buf.String()), &entry); err != nil {
+		t.Fatalf("Logger.Debugf() 输出不是有效的 JSON: %v", err)
+	}
+
+	if entry.Level != "debug" {
+		t.Errorf("entry.Level = %q, want %q", entry.Level, "debug")
+	}
+	if entry.Message != "debug message 42" {
+		t.Errorf("entry.Message = %q, want %q", entry.Message, "debug message 42")
+	}
+}
+
+func TestLoggerWarnf(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewLogger(&buf, "warn")
+	logger.Warnf("warn %s %d", "message", 42)
+
+	var entry LogEntry
+	if err := json.Unmarshal([]byte(buf.String()), &entry); err != nil {
+		t.Fatalf("Logger.Warnf() 输出不是有效的 JSON: %v", err)
+	}
+
+	if entry.Level != "warn" {
+		t.Errorf("entry.Level = %q, want %q", entry.Level, "warn")
+	}
+	if entry.Message != "warn message 42" {
+		t.Errorf("entry.Message = %q, want %q", entry.Message, "warn message 42")
+	}
+}
+
+func TestLoggerErrorf(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewLogger(&buf, "error")
+	logger.Errorf("error %s %d", "message", 42)
+
+	var entry LogEntry
+	if err := json.Unmarshal([]byte(buf.String()), &entry); err != nil {
+		t.Fatalf("Logger.Errorf() 输出不是有效的 JSON: %v", err)
+	}
+
+	if entry.Level != "error" {
+		t.Errorf("entry.Level = %q, want %q", entry.Level, "error")
+	}
+	if entry.Message != "error message 42" {
+		t.Errorf("entry.Message = %q, want %q", entry.Message, "error message 42")
+	}
+}

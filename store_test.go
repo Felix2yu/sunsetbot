@@ -409,3 +409,341 @@ func splitLines(s string) []string {
 	}
 	return lines
 }
+
+func TestGetStatisticsWithFilters(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	quality1 := 0.85
+	quality2 := 0.95
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality1})
+	store.UpsertRecord(SunsetRecord{City: "上海", Date: "2024-01-02", Time: "18:35", EventType: "morning", Model: "EC", Quality: &quality2})
+
+	t.Run("按城市过滤", func(t *testing.T) {
+		stats, err := store.GetStatistics("北京", "", "", "")
+		if err != nil {
+			t.Fatalf("GetStatistics() 失败: %v", err)
+		}
+		if stats.TotalRecords != 1 {
+			t.Errorf("TotalRecords = %d, want 1", stats.TotalRecords)
+		}
+	})
+
+	t.Run("按事件类型过滤", func(t *testing.T) {
+		stats, err := store.GetStatistics("", "evening", "", "")
+		if err != nil {
+			t.Fatalf("GetStatistics() 失败: %v", err)
+		}
+		if stats.TotalRecords != 1 {
+			t.Errorf("TotalRecords = %d, want 1", stats.TotalRecords)
+		}
+	})
+
+	t.Run("按日期范围过滤", func(t *testing.T) {
+		stats, err := store.GetStatistics("", "", "2024-01-01", "2024-01-01")
+		if err != nil {
+			t.Fatalf("GetStatistics() 失败: %v", err)
+		}
+		if stats.TotalRecords != 1 {
+			t.Errorf("TotalRecords = %d, want 1", stats.TotalRecords)
+		}
+	})
+}
+
+func TestGetCityComparisonWithFilters(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	quality1 := 0.85
+	quality2 := 0.95
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality1})
+	store.UpsertRecord(SunsetRecord{City: "上海", Date: "2024-01-02", Time: "18:35", EventType: "morning", Model: "EC", Quality: &quality2})
+
+	t.Run("按事件类型过滤", func(t *testing.T) {
+		result, err := store.GetCityComparison("evening", "", "")
+		if err != nil {
+			t.Fatalf("GetCityComparison() 失败: %v", err)
+		}
+		if len(result) != 1 {
+			t.Errorf("返回 %d 个城市, want 1", len(result))
+		}
+	})
+
+	t.Run("按日期范围过滤", func(t *testing.T) {
+		result, err := store.GetCityComparison("", "2024-01-01", "2024-01-01")
+		if err != nil {
+			t.Fatalf("GetCityComparison() 失败: %v", err)
+		}
+		if len(result) != 1 {
+			t.Errorf("返回 %d 个城市, want 1", len(result))
+		}
+	})
+}
+
+func TestGetRankingsWithFilters(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	quality1 := 0.85
+	quality2 := 0.95
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality1})
+	store.UpsertRecord(SunsetRecord{City: "上海", Date: "2024-01-02", Time: "18:35", EventType: "morning", Model: "EC", Quality: &quality2})
+
+	t.Run("按城市过滤", func(t *testing.T) {
+		rankings, err := store.GetRankings("北京", "", 10)
+		if err != nil {
+			t.Fatalf("GetRankings() 失败: %v", err)
+		}
+		if len(rankings.BestDates) != 1 {
+			t.Errorf("BestDates 长度 = %d, want 1", len(rankings.BestDates))
+		}
+	})
+
+	t.Run("按事件类型过滤", func(t *testing.T) {
+		rankings, err := store.GetRankings("", "evening", 10)
+		if err != nil {
+			t.Fatalf("GetRankings() 失败: %v", err)
+		}
+		if len(rankings.BestDates) != 1 {
+			t.Errorf("BestDates 长度 = %d, want 1", len(rankings.BestDates))
+		}
+	})
+}
+
+func TestQueryRecordsWithMultipleFilters(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	quality1 := 0.85
+	quality2 := 0.95
+	quality3 := 0.75
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality1})
+	store.UpsertRecord(SunsetRecord{City: "上海", Date: "2024-01-02", Time: "18:35", EventType: "morning", Model: "EC", Quality: &quality2})
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-03", Time: "18:40", EventType: "evening", Model: "GFS", Quality: &quality3})
+
+	t.Run("多条件过滤", func(t *testing.T) {
+		result, err := store.QueryRecords("北京", "evening", "2024-01-01", "2024-01-01")
+		if err != nil {
+			t.Fatalf("QueryRecords() 失败: %v", err)
+		}
+		if len(result) != 1 {
+			t.Errorf("返回 %d 条记录, want 1", len(result))
+		}
+	})
+
+	t.Run("无匹配结果", func(t *testing.T) {
+		result, err := store.QueryRecords("广州", "", "", "")
+		if err != nil {
+			t.Fatalf("QueryRecords() 失败: %v", err)
+		}
+		if len(result) != 0 {
+			t.Errorf("返回 %d 条记录, want 0", len(result))
+		}
+	})
+}
+
+func TestGetTodayTomorrowDataWithCity(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	today := "2024-01-15"
+	quality := 0.85
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: today, Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality})
+	store.UpsertRecord(SunsetRecord{City: "上海", Date: today, Time: "18:35", EventType: "evening", Model: "EC", Quality: &quality})
+
+	t.Run("不指定城市", func(t *testing.T) {
+		result, err := store.GetTodayTomorrowData("")
+		if err != nil {
+			t.Fatalf("GetTodayTomorrowData() 失败: %v", err)
+		}
+		// 结果取决于当前日期
+		_ = result
+	})
+
+	t.Run("指定城市", func(t *testing.T) {
+		result, err := store.GetTodayTomorrowData("北京")
+		if err != nil {
+			t.Fatalf("GetTodayTomorrowData() 失败: %v", err)
+		}
+		// 结果取决于当前日期
+		_ = result
+	})
+}
+
+func TestGetRankingsWithEmptyData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	rankings, err := store.GetRankings("", "", 10)
+	if err != nil {
+		t.Fatalf("GetRankings() 失败: %v", err)
+	}
+	if len(rankings.BestDates) != 0 {
+		t.Errorf("BestDates 长度 = %d, want 0", len(rankings.BestDates))
+	}
+	if len(rankings.Monthly) != 0 {
+		t.Errorf("Monthly 长度 = %d, want 0", len(rankings.Monthly))
+	}
+	if len(rankings.Seasonal) != 0 {
+		t.Errorf("Seasonal 长度 = %d, want 0", len(rankings.Seasonal))
+	}
+}
+
+func TestDeleteOldRecordsNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	deleted, err := store.DeleteOldRecords(365)
+	if err != nil {
+		t.Fatalf("DeleteOldRecords() 失败: %v", err)
+	}
+	if deleted != 0 {
+		t.Errorf("DeleteOldRecords() 删除了 %d 条记录, want 0", deleted)
+	}
+}
+
+func TestDeleteAbnormalDatesNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	deleted, err := store.DeleteAbnormalDates()
+	if err != nil {
+		t.Fatalf("DeleteAbnormalDates() 失败: %v", err)
+	}
+	if deleted != 0 {
+		t.Errorf("DeleteAbnormalDates() 删除了 %d 条记录, want 0", deleted)
+	}
+}
+
+func TestGetCitiesNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	cities, err := store.GetCities()
+	if err != nil {
+		t.Fatalf("GetCities() 失败: %v", err)
+	}
+	if len(cities) != 0 {
+		t.Errorf("GetCities() 返回 %d 个城市, want 0", len(cities))
+	}
+}
+
+func TestExportCSVNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	var buf bytes.Buffer
+	err := store.ExportCSV(&buf, "", "", "", "")
+	if err != nil {
+		t.Fatalf("ExportCSV() 失败: %v", err)
+	}
+
+	// CSV 应该包含表头
+	lines := splitLines(buf.String())
+	if len(lines) < 1 {
+		t.Errorf("ExportCSV() 应该至少包含表头")
+	}
+}
+
+func TestExportJSONNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	var buf bytes.Buffer
+	err := store.ExportJSON(&buf, "", "", "", "")
+	if err != nil {
+		t.Fatalf("ExportJSON() 失败: %v", err)
+	}
+
+	var records []SunsetRecord
+	if err := json.Unmarshal(buf.Bytes(), &records); err != nil {
+		t.Fatalf("ExportJSON() 输出不是有效的 JSON: %v", err)
+	}
+	if len(records) != 0 {
+		t.Errorf("ExportJSON() 返回 %d 条记录, want 0", len(records))
+	}
+}
+
+func TestGetStatisticsNoData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	stats, err := store.GetStatistics("", "", "", "")
+	if err != nil {
+		t.Fatalf("GetStatistics() 失败: %v", err)
+	}
+	if stats.TotalRecords != 0 {
+		t.Errorf("TotalRecords = %d, want 0", stats.TotalRecords)
+	}
+	if len(stats.Models) != 0 {
+		t.Errorf("Models 长度 = %d, want 0", len(stats.Models))
+	}
+	if len(stats.Monthly) != 0 {
+		t.Errorf("Monthly 长度 = %d, want 0", len(stats.Monthly))
+	}
+}
+
+func TestGetRankingsWithSeasonalData(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	quality := 0.85
+	// 添加不同季节的数据
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-03-15", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality})
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-06-15", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality})
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-09-15", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality})
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-12-15", Time: "18:30", EventType: "evening", Model: "GFS", Quality: &quality})
+
+	rankings, err := store.GetRankings("", "", 10)
+	if err != nil {
+		t.Fatalf("GetRankings() 失败: %v", err)
+	}
+
+	if len(rankings.BestDates) != 4 {
+		t.Errorf("BestDates 长度 = %d, want 4", len(rankings.BestDates))
+	}
+	if len(rankings.Monthly) != 4 {
+		t.Errorf("Monthly 长度 = %d, want 4", len(rankings.Monthly))
+	}
+	if len(rankings.Seasonal) != 4 {
+		t.Errorf("Seasonal 长度 = %d, want 4", len(rankings.Seasonal))
+	}
+}
+
+func TestStoreWithNilQuality(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	// 测试 quality 为 nil 的情况
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", Quality: nil})
+
+	records, err := store.QueryRecords("北京", "", "", "")
+	if err != nil {
+		t.Fatalf("QueryRecords() 失败: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("QueryRecords() 返回 %d 条记录, want 1", len(records))
+	}
+	if records[0].Quality != nil {
+		t.Error("Quality 应该为 nil")
+	}
+}
+
+func TestStoreWithNilAOD(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	// 测试 AOD 为 nil 的情况
+	store.UpsertRecord(SunsetRecord{City: "北京", Date: "2024-01-01", Time: "18:30", EventType: "evening", Model: "GFS", AOD: nil})
+
+	records, err := store.QueryRecords("北京", "", "", "")
+	if err != nil {
+		t.Fatalf("QueryRecords() 失败: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("QueryRecords() 返回 %d 条记录, want 1", len(records))
+	}
+	if records[0].AOD != nil {
+		t.Error("AOD 应该为 nil")
+	}
+}

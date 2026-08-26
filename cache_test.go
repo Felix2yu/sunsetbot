@@ -160,3 +160,47 @@ func TestCacheTypes(t *testing.T) {
 		}
 	})
 }
+
+func TestCacheCleanup(t *testing.T) {
+	// 创建一个短 TTL 的缓存
+	cache := NewCache(100 * time.Millisecond)
+
+	// 添加一些条目
+	cache.Set("key1", "value1")
+	cache.Set("key2", "value2")
+	cache.Set("key3", "value3")
+
+	// 等待条目过期
+	time.Sleep(200 * time.Millisecond)
+
+	// 验证条目已过期
+	_, exists1 := cache.Get("key1")
+	_, exists2 := cache.Get("key2")
+	_, exists3 := cache.Get("key3")
+
+	if exists1 || exists2 || exists3 {
+		t.Error("过期的条目应该已被清理")
+	}
+}
+
+func TestCacheCleanupRoutine(t *testing.T) {
+	// 创建一个短 TTL 的缓存，cleanup 间隔也短
+	cache := NewCache(50 * time.Millisecond)
+
+	// 添加一些条目
+	for i := 0; i < 10; i++ {
+		cache.Set(string(rune('a'+i)), i)
+	}
+
+	// 等待足够长的时间让 cleanup 运行
+	time.Sleep(200 * time.Millisecond)
+
+	// 添加新条目
+	cache.Set("new", "value")
+
+	// 验证新条目存在
+	value, exists := cache.Get("new")
+	if !exists || value != "value" {
+		t.Error("新条目应该存在")
+	}
+}

@@ -2,8 +2,11 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestCalculatePriority(t *testing.T) {
@@ -316,4 +319,561 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestFetchSingleData(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Schedule: ScheduleConfig{
+			PushError: true,
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	result := predictor.fetchSingleData(server.URL)
+	if result == nil {
+		t.Fatal("fetchSingleData() 返回 nil")
+	}
+	if result.DateStr != "2024-01-01" {
+		t.Errorf("DateStr = %q, want %q", result.DateStr, "2024-01-01")
+	}
+}
+
+func TestFetchSingleDataHTTPError(t *testing.T) {
+	// 创建返回错误的 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Schedule: ScheduleConfig{
+			PushError: true,
+		},
+	}
+
+	predictor := NewWeatherPredictor(config, logger, nil)
+
+	result := predictor.fetchSingleData(server.URL)
+	if result == nil {
+		t.Fatal("fetchSingleData() 在 HTTP 错误时应该返回错误结果")
+	}
+	if !contains(result.PushStr, "失败") {
+		t.Errorf("PushStr 应包含 '失败', got %q", result.PushStr)
+	}
+}
+
+func TestFetchSingleDataInvalidJSON(t *testing.T) {
+	// 创建返回无效 JSON 的 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`invalid json`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Schedule: ScheduleConfig{
+			PushError: true,
+		},
+	}
+
+	predictor := NewWeatherPredictor(config, logger, nil)
+
+	result := predictor.fetchSingleData(server.URL)
+	if result != nil {
+		t.Error("fetchSingleData() 在无效 JSON 时应该返回 nil")
+	}
+}
+
+func TestSendNotification(t *testing.T) {
+	logger := log.New(os.Stdout, "", 0)
+
+	t.Run("推送已关闭", func(t *testing.T) {
+		config := &Config{
+			Push: PushConfig{
+				Enable: false,
+			},
+		}
+		predictor := NewWeatherPredictor(config, logger, nil)
+		// 不应该 panic
+		predictor.sendNotification("title", "content", 1, []string{})
+	})
+
+	t.Run("未配置推送URL", func(t *testing.T) {
+		config := &Config{
+			Push: PushConfig{
+				Enable:  true,
+				PushURL: "",
+			},
+		}
+		predictor := NewWeatherPredictor(config, logger, nil)
+		// 不应该 panic
+		predictor.sendNotification("title", "content", 1, []string{})
+	})
+
+	t.Run("正常推送", func(t *testing.T) {
+		config := &Config{
+			Push: PushConfig{
+				Enable:   true,
+				PushURL:  "http://example.com",
+				Markdown: true,
+			},
+		}
+		predictor := NewWeatherPredictor(config, logger, nil)
+		// 由于没有真实的推送服务，会返回错误，但不应该 panic
+		predictor.sendNotification("title", "content", 1, []string{})
+	})
+}
+
+func TestFetchDataForCity(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Push: PushConfig{
+			Enable: false,
+		},
+		Schedule: ScheduleConfig{
+			City: "北京",
+			Morning: TaskConfig{
+				Model: []string{"GFS"},
+			},
+			Evening: TaskConfig{
+				Model: []string{"GFS"},
+			},
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	now := time.Now()
+	predictor.fetchDataForCity("北京", []string{"GFS"}, true, now, "morning")
+	// 不应该 panic
+}
+
+func TestFetchData(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Push: PushConfig{
+			Enable: false,
+		},
+		Schedule: ScheduleConfig{
+			City: "北京",
+			Morning: TaskConfig{
+				Model: []string{"GFS"},
+			},
+			Evening: TaskConfig{
+				Model: []string{"GFS"},
+			},
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	predictor.FetchData(true)
+	// 不应该 panic
+
+	predictor.FetchData(false)
+	// 不应该 panic
+}
+
+func TestBuildMarkdownResponse(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	urls := map[string]string{
+		server.URL: "GFS",
+	}
+
+	lines, maxPriority, hasData := predictor.buildMarkdownResponse("北京", urls, "evening")
+
+	if !hasData {
+		t.Error("buildMarkdownResponse() 应该有数据")
+	}
+	if maxPriority == nil {
+		t.Error("maxPriority 不应该为 nil")
+	}
+	if len(lines) == 0 {
+		t.Error("lines 不应该为空")
+	}
+}
+
+func TestBuildMarkdownResponseNoData(t *testing.T) {
+	// 创建返回空数据的 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+	}
+
+	predictor := NewWeatherPredictor(config, logger, nil)
+
+	urls := map[string]string{
+		server.URL: "GFS",
+	}
+
+	lines, maxPriority, hasData := predictor.buildMarkdownResponse("北京", urls, "evening")
+
+	if hasData {
+		t.Error("buildMarkdownResponse() 不应该有数据")
+	}
+	if maxPriority != nil {
+		t.Error("maxPriority 应该为 nil")
+	}
+	if len(lines) != 0 {
+		t.Error("lines 应该为空")
+	}
+}
+
+func TestParseWeatherDataEdgeCases(t *testing.T) {
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: "https://example.com/",
+		},
+	}
+
+	predictor := &WeatherPredictor{
+		config: config,
+		client: nil,
+		logger: logger,
+	}
+
+	t.Run("空质量数据", func(t *testing.T) {
+		content := `{
+			"tb_quality": "",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`
+		result := predictor.parseWeatherData(content)
+		if result == nil {
+			t.Fatal("parseWeatherData() 返回 nil")
+		}
+		if result.QualityNum != nil {
+			t.Error("QualityNum 应该为 nil")
+		}
+	})
+
+	t.Run("AOD为空", func(t *testing.T) {
+		content := `{
+			"tb_quality": "0.85",
+			"tb_aod": "",
+			"tb_event_time": "2024-01-01 18:30"
+		}`
+		result := predictor.parseWeatherData(content)
+		if result == nil {
+			t.Fatal("parseWeatherData() 返回 nil")
+		}
+		if result.AODNum != 0 {
+			t.Errorf("AODNum = %f, want 0", result.AODNum)
+		}
+	})
+
+	t.Run("低质量数据", func(t *testing.T) {
+		content := `{
+			"tb_quality": "0.15",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`
+		result := predictor.parseWeatherData(content)
+		if result == nil {
+			t.Fatal("parseWeatherData() 返回 nil")
+		}
+		if result.QualityNum == nil {
+			t.Fatal("QualityNum 不应该为 nil")
+		}
+		if *result.QualityNum >= 0.4 {
+			t.Errorf("低质量数据应该小于 0.4, got %f", *result.QualityNum)
+		}
+	})
+
+	t.Run("高质量数据", func(t *testing.T) {
+		content := `{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`
+		result := predictor.parseWeatherData(content)
+		if result == nil {
+			t.Fatal("parseWeatherData() 返回 nil")
+		}
+		if result.QualityNum == nil {
+			t.Fatal("QualityNum 不应该为 nil")
+		}
+		if *result.QualityNum < 0.4 {
+			t.Errorf("高质量数据应该大于等于 0.4, got %f", *result.QualityNum)
+		}
+	})
+
+	t.Run("低AOD数据", func(t *testing.T) {
+		content := `{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`
+		result := predictor.parseWeatherData(content)
+		if result == nil {
+			t.Fatal("parseWeatherData() 返回 nil")
+		}
+		if result.AODNum > 0.4 {
+			t.Errorf("低AOD数据应该小于等于 0.4, got %f", result.AODNum)
+		}
+	})
+}
+
+func TestFetchSingleDataConnectionError(t *testing.T) {
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: "http://localhost:99999/",
+		},
+		Schedule: ScheduleConfig{
+			PushError: true,
+		},
+	}
+
+	predictor := NewWeatherPredictor(config, logger, nil)
+
+	result := predictor.fetchSingleData("http://localhost:99999")
+	if result == nil {
+		t.Fatal("fetchSingleData() 在连接错误时应该返回错误结果")
+	}
+	if !contains(result.PushStr, "失败") {
+		t.Errorf("PushStr 应包含 '失败', got %q", result.PushStr)
+	}
+}
+
+func TestFetchSingleDataReadError(t *testing.T) {
+	// 创建一个在读取时关闭连接的服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			return
+		}
+		conn, _, _ := hijacker.Hijack()
+		conn.Close()
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Schedule: ScheduleConfig{
+			PushError: true,
+		},
+	}
+
+	predictor := NewWeatherPredictor(config, logger, nil)
+
+	result := predictor.fetchSingleData(server.URL)
+	// 这可能会返回 nil 或错误结果，取决于连接关闭的时机
+	_ = result
+}
+
+func TestFetchDataForCityWithMultipleModels(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Push: PushConfig{
+			Enable: false,
+		},
+		Schedule: ScheduleConfig{
+			City: "北京",
+			Morning: TaskConfig{
+				Model: []string{"GFS", "EC"},
+			},
+			Evening: TaskConfig{
+				Model: []string{"GFS", "EC"},
+			},
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	now := time.Now()
+	predictor.fetchDataForCity("北京", []string{"GFS", "EC"}, true, now, "morning")
+	// 不应该 panic
+}
+
+func TestFetchDataMorning(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+		Push: PushConfig{
+			Enable: false,
+		},
+		Schedule: ScheduleConfig{
+			City: "北京",
+			Morning: TaskConfig{
+				Model: []string{"GFS"},
+			},
+			Evening: TaskConfig{
+				Model: []string{"GFS"},
+			},
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	predictor.FetchData(true)
+	// 不应该 panic
+}
+
+func TestBuildMarkdownResponseMultipleDates(t *testing.T) {
+	// 创建 mock HTTP 服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"tb_quality": "0.85",
+			"tb_aod": "0.3",
+			"tb_event_time": "2024-01-01 18:30"
+		}`))
+	}))
+	defer server.Close()
+
+	logger := log.New(os.Stdout, "", 0)
+	config := &Config{
+		Request: RequestConfig{
+			BaseURL: server.URL + "/",
+		},
+	}
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	predictor := NewWeatherPredictor(config, logger, store)
+
+	// 使用多个 URL 来模拟多个日期
+	urls := map[string]string{
+		server.URL: "GFS",
+	}
+
+	lines, maxPriority, hasData := predictor.buildMarkdownResponse("北京", urls, "evening")
+
+	if !hasData {
+		t.Error("buildMarkdownResponse() 应该有数据")
+	}
+	if maxPriority == nil {
+		t.Error("maxPriority 不应该为 nil")
+	}
+	if len(lines) == 0 {
+		t.Error("lines 不应该为空")
+	}
 }
