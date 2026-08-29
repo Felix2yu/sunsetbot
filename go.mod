@@ -1,6 +1,6 @@
 module liuxia
 
-go 1.27.0
+go 1.27
 
 require (
 	github.com/containrrr/shoutrrr v0.8.0
